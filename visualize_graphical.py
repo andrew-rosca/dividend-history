@@ -30,9 +30,17 @@ def create_summary_table(ax, table_data: List[Dict]):
     ax.axis('tight')
     ax.axis('off')
 
-    # Prepare table data
-    headers = ['Symbol', 'Price Δ\n6m', 'Div\n6m', 'Total\n6m', 'Result\n6m', 'Price Δ\n12m', 'Div\n12m', 'Total\n12m', 'Result\n12m']
+    # Prepare table data with two-level headers
+    headers_top = ['', '6 Month', '', '', '', '12 Month', '', '', '']
+    headers_bottom = ['Symbol', 'Price Δ', 'Dividends', 'Total', 'Result', 'Price Δ', 'Dividends', 'Total', 'Result']
+
+    # Create data rows - we'll add both header rows as data rows
     rows = []
+
+    # Add period labels as first row
+    rows.append(headers_top)
+    # Add metric labels as second row
+    rows.append(headers_bottom)
 
     for item in table_data:
         def fmt_pct(v):
@@ -63,19 +71,45 @@ def create_summary_table(ax, table_data: List[Dict]):
         ]
         rows.append(row)
 
-    # Create table
-    table = ax.table(cellText=rows, colLabels=headers, loc='center', cellLoc='center')
+    # Create table without colLabels since we're including them in the data
+    table = ax.table(cellText=rows, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(9)
     table.scale(1, 1.5)
 
-    # Style header
-    for i in range(len(headers)):
-        table[(0, i)].set_facecolor('#40466e')
-        table[(0, i)].set_text_props(weight='bold', color='white')
+    # Style period label row (row 0 - first data row)
+    for i in range(len(headers_top)):
+        table[(0, i)].set_text_props(weight='bold', fontsize=10)
+        # Set background colors matching the column groups
+        if i == 0:
+            table[(0, i)].set_facecolor('#f0f0f0')
+            table[(0, i)].set_text_props(color='#f0f0f0')
+        elif 1 <= i <= 4:
+            table[(0, i)].set_facecolor('#E6F3FF')
+            if headers_top[i] == '':
+                table[(0, i)].set_text_props(color='#E6F3FF')
+        else:  # 5-8
+            table[(0, i)].set_facecolor('#FFF9E6')
+            if headers_top[i] == '':
+                table[(0, i)].set_text_props(color='#FFF9E6')
 
-    # Color code cells based on values
-    for i, item in enumerate(table_data, start=1):
+    # Style metric label row (row 1)
+    for i in range(len(headers_bottom)):
+        table[(1, i)].set_facecolor('#40466e')
+        table[(1, i)].set_text_props(weight='bold', color='white', fontsize=8)
+
+    # Set background colors for column groups (data starts at row 2)
+    for i in range(2, len(rows)):
+        # 6m columns (1-4): light blue background
+        for col in [1, 2, 3, 4]:
+            table[(i, col)].set_facecolor('#E6F3FF')
+
+        # 12m columns (5-8): light yellow background
+        for col in [5, 6, 7, 8]:
+            table[(i, col)].set_facecolor('#FFF9E6')
+
+    # Color code cells based on values (data starts at row 2 now)
+    for i, item in enumerate(table_data, start=2):
         # Color GAIN/LOSS text (columns 4 and 8) - using same method as other columns
         if item['6m']['profitable_total'] is not None:
             if item['6m']['profitable_total']:
