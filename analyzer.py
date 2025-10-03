@@ -182,3 +182,40 @@ class DividendAnalyzer:
             (row['date'].strftime('%Y-%m-%d'), row['c'])
             for _, row in period_prices.iterrows()
         ]
+
+    def get_dividend_frequency(self) -> str:
+        """
+        Determine dividend payment frequency based on historical data.
+
+        Returns:
+            'M' for monthly, 'Q' for quarterly, 'W' for weekly, or '' if unknown
+        """
+        if self.dividends_df.empty or len(self.dividends_df) < 2:
+            return ''
+
+        # Get dividends from last 12 months
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=365)
+        recent_divs = self.dividends_df[self.dividends_df['date'] >= start_date]
+
+        if len(recent_divs) < 2:
+            return ''
+
+        # Calculate average days between dividends
+        dates = sorted(recent_divs['date'].tolist())
+        intervals = [(dates[i+1] - dates[i]).days for i in range(len(dates)-1)]
+
+        if not intervals:
+            return ''
+
+        avg_interval = sum(intervals) / len(intervals)
+
+        # Classify based on average interval
+        if avg_interval <= 10:  # ~weekly (7 days, with some buffer)
+            return 'W'
+        elif avg_interval <= 35:  # ~monthly (30 days, with buffer)
+            return 'M'
+        elif avg_interval <= 110:  # ~quarterly (90 days, with buffer)
+            return 'Q'
+        else:
+            return ''

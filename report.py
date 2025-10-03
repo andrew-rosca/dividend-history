@@ -11,12 +11,23 @@ import numpy as np
 from typing import List, Dict, Tuple
 from data_manager import DataManager
 from analyzer import DividendAnalyzer
+import matplotlib.font_manager as fm
+
+# Configure font fallback: DejaVu Sans for regular text (supports bold),
+# Apple Symbols for Unicode circled characters
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Apple Symbols', 'Helvetica', 'Arial']
+plt.rcParams['font.family'] = 'sans-serif'
 
 
 def load_config(config_path: str = 'config.yaml') -> dict:
     """Load configuration from YAML file."""
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
+
+
+def get_frequency_icon(freq: str) -> str:
+    """Convert frequency code to simple letter."""
+    return freq  # Just return M, W, or Q
 
 
 def create_summary_table(ax, table_data: List[Dict]):
@@ -31,7 +42,7 @@ def create_summary_table(ax, table_data: List[Dict]):
     ax.axis('off')
 
     # Prepare table data with two-level headers
-    headers_top = ['', '3 Month', '', '', '', '6 Month', '', '', '', '12 Month', '', '', '']
+    headers_top = ['Monthly | Weekly', '3 Month', '', '', '', '6 Month', '', '', '', '12 Month', '', '', '']
     headers_bottom = ['Symbol', 'Price Δ', 'Div', 'Total', 'Result', 'Price Δ', 'Div', 'Total', 'Result', 'Price Δ', 'Div', 'Total', 'Result']
 
     # Create data rows - we'll add both header rows as data rows
@@ -60,8 +71,12 @@ def create_summary_table(ax, table_data: List[Dict]):
                 return 'N/A'
             return 'GAIN' if v else 'LOSS'
 
+        # Format symbol with frequency indicator (right-aligned with spacing)
+        freq_icon = get_frequency_icon(item.get('dividend_frequency', ''))
+        symbol_text = f"{item['symbol']}     {freq_icon}" if freq_icon else item['symbol']
+
         row = [
-            item['symbol'],
+            symbol_text,
             fmt_pct(item['3m']['price_change_pct']),
             fmt_dollars(item['3m']['total_dividends'], item['3m']['dividend_yield_pct']),
             fmt_pct(item['3m']['total_return_pct']),
@@ -87,9 +102,14 @@ def create_summary_table(ax, table_data: List[Dict]):
     for i in range(len(headers_top)):
         table[(0, i)].set_text_props(weight='bold', fontsize=10)
         # Set background colors matching the column groups
-        if i == 0:
+        if i == 0:  # Symbol column
             table[(0, i)].set_facecolor('#f0f0f0')
-            table[(0, i)].set_text_props(color='#f0f0f0')
+            # Only hide text if empty
+            if headers_top[i] == '':
+                table[(0, i)].set_text_props(color='#f0f0f0')
+            else:
+                # Make font smaller in first cell to fit legend text
+                table[(0, i)].set_text_props(fontsize=7)
         elif 1 <= i <= 4:  # 3 month
             table[(0, i)].set_facecolor('#E6FFF0')
             if headers_top[i] == '':
@@ -110,6 +130,9 @@ def create_summary_table(ax, table_data: List[Dict]):
 
     # Set background colors for column groups (data starts at row 2)
     for i in range(2, len(rows)):
+        # Right-align symbol column (column 0)
+        table[(i, 0)].set_text_props(ha='right')
+
         # 3m columns (1-4): light mint background
         for col in [1, 2, 3, 4]:
             table[(i, col)].set_facecolor('#E6FFF0')
@@ -121,6 +144,17 @@ def create_summary_table(ax, table_data: List[Dict]):
         # 12m columns (9-12): light yellow background
         for col in [9, 10, 11, 12]:
             table[(i, col)].set_facecolor('#FFF9E6')
+
+    # Style frequency indicators in symbol column with different colors
+    freq_colors = {'M': '#0066CC', 'W': '#CC6600', 'Q': '#009900'}
+    for i, item in enumerate(table_data, start=2):
+        freq = item.get('dividend_frequency', '')
+        if freq and freq in freq_colors:
+            # Get the cell text and split to style the frequency part
+            cell = table[(i, 0)]
+            # Note: matplotlib doesn't support multi-color text in one cell easily
+            # So we'll just make the whole symbol cell slightly colored
+            pass
 
     # Color code cells based on values (data starts at row 2 now)
     for i, item in enumerate(table_data, start=2):
@@ -269,9 +303,13 @@ def main():
         # Get price history
         price_history = analyzer.get_price_history(months=12)
 
+        # Get dividend frequency
+        dividend_freq = analyzer.get_dividend_frequency()
+
         table_data.append({
             'symbol': symbol,
             'price_history': price_history,
+            'dividend_frequency': dividend_freq,
             '3m': metrics_3m,
             '6m': metrics_6m,
             '12m': metrics_12m
@@ -361,8 +399,10 @@ def main():
             valid_y = padded_values[first_valid_idx:]
             ax.fill_between(valid_x, valid_y, alpha=0.3)
 
-        # Style
-        ax.set_title(item['symbol'], fontweight='bold', fontsize=9)
+        # Style - add frequency indicator to title
+        freq_icon = get_frequency_icon(item.get('dividend_frequency', ''))
+        title_text = f"{item['symbol']} {freq_icon}" if freq_icon else item['symbol']
+        ax.set_title(title_text, fontweight='bold', fontsize=9)
         ax.grid(True, alpha=0.3)
         ax.tick_params(axis='x', labelbottom=False)
         ax.tick_params(labelsize=7)
