@@ -42,16 +42,32 @@ cp config.sample.yaml config.yaml
 
 ## Usage
 
-Run the report generator:
+### First Time / Refreshing Data
+
+Fetch the latest data from Polygon API:
+```bash
+python fetch_data.py
+```
+
+This will:
+- Fetch the last 24 months of dividend and price data from Polygon
+- Merge with any existing cached data
+- Store data locally in the `data/` directory
+
+### Generate Report
+
+Create the analysis report from cached data:
 ```bash
 python report.py
 ```
 
-The script will:
-- Fetch the last 24 months of dividend and price data from Polygon
+This will:
+- Read data from the local `data/` directory (does NOT fetch new data)
 - Analyze dividend patterns and price performance
 - Generate an interactive graphical report with charts and metrics
-- Store data locally in the `data/` directory for future runs
+- Save the report as `dividend_analysis.png`
+
+**Note:** `report.py` uses cached data only. To get updated data, run `fetch_data.py` first.
 
 ## Configuration
 
