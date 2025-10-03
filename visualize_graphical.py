@@ -31,8 +31,8 @@ def create_summary_table(ax, table_data: List[Dict]):
     ax.axis('off')
 
     # Prepare table data with two-level headers
-    headers_top = ['', '6 Month', '', '', '', '12 Month', '', '', '']
-    headers_bottom = ['Symbol', 'Price Δ', 'Dividends', 'Total', 'Result', 'Price Δ', 'Dividends', 'Total', 'Result']
+    headers_top = ['', '3 Month', '', '', '', '6 Month', '', '', '', '12 Month', '', '', '']
+    headers_bottom = ['Symbol', 'Price Δ', 'Div', 'Total', 'Result', 'Price Δ', 'Div', 'Total', 'Result', 'Price Δ', 'Div', 'Total', 'Result']
 
     # Create data rows - we'll add both header rows as data rows
     rows = []
@@ -60,6 +60,10 @@ def create_summary_table(ax, table_data: List[Dict]):
 
         row = [
             item['symbol'],
+            fmt_pct(item['3m']['price_change_pct']),
+            fmt_dollars(item['3m']['total_dividends']),
+            fmt_pct(item['3m']['total_return_pct']),
+            fmt_profit(item['3m']['profitable_total']),
             fmt_pct(item['6m']['price_change_pct']),
             fmt_dollars(item['6m']['total_dividends']),
             fmt_pct(item['6m']['total_return_pct']),
@@ -84,11 +88,15 @@ def create_summary_table(ax, table_data: List[Dict]):
         if i == 0:
             table[(0, i)].set_facecolor('#f0f0f0')
             table[(0, i)].set_text_props(color='#f0f0f0')
-        elif 1 <= i <= 4:
+        elif 1 <= i <= 4:  # 3 month
+            table[(0, i)].set_facecolor('#E6FFF0')
+            if headers_top[i] == '':
+                table[(0, i)].set_text_props(color='#E6FFF0')
+        elif 5 <= i <= 8:  # 6 month
             table[(0, i)].set_facecolor('#E6F3FF')
             if headers_top[i] == '':
                 table[(0, i)].set_text_props(color='#E6F3FF')
-        else:  # 5-8
+        else:  # 9-12, 12 month
             table[(0, i)].set_facecolor('#FFF9E6')
             if headers_top[i] == '':
                 table[(0, i)].set_text_props(color='#FFF9E6')
@@ -100,66 +108,94 @@ def create_summary_table(ax, table_data: List[Dict]):
 
     # Set background colors for column groups (data starts at row 2)
     for i in range(2, len(rows)):
-        # 6m columns (1-4): light blue background
+        # 3m columns (1-4): light mint background
         for col in [1, 2, 3, 4]:
+            table[(i, col)].set_facecolor('#E6FFF0')
+
+        # 6m columns (5-8): light blue background
+        for col in [5, 6, 7, 8]:
             table[(i, col)].set_facecolor('#E6F3FF')
 
-        # 12m columns (5-8): light yellow background
-        for col in [5, 6, 7, 8]:
+        # 12m columns (9-12): light yellow background
+        for col in [9, 10, 11, 12]:
             table[(i, col)].set_facecolor('#FFF9E6')
 
     # Color code cells based on values (data starts at row 2 now)
     for i, item in enumerate(table_data, start=2):
-        # Color GAIN/LOSS text (columns 4 and 8) - using same method as other columns
+        # Color GAIN/LOSS text for all periods
+        # 3m Result (column 4)
+        if item['3m']['profitable_total'] is not None:
+            color = '#008000' if item['3m']['profitable_total'] else '#FF0000'
+            table[(i, 4)].get_text().set_color(color)
+            table[(i, 4)].get_text().set_weight('bold')
+
+        # 6m Result (column 8)
         if item['6m']['profitable_total'] is not None:
-            if item['6m']['profitable_total']:
-                table[(i, 4)].get_text().set_color('#008000')
-                table[(i, 4)].get_text().set_weight('bold')
-            else:
-                table[(i, 4)].get_text().set_color('#FF0000')
-                table[(i, 4)].get_text().set_weight('bold')
+            color = '#008000' if item['6m']['profitable_total'] else '#FF0000'
+            table[(i, 8)].get_text().set_color(color)
+            table[(i, 8)].get_text().set_weight('bold')
 
+        # 12m Result (column 12)
         if item['12m']['profitable_total'] is not None:
-            if item['12m']['profitable_total']:
-                table[(i, 8)].get_text().set_color('#008000')
-                table[(i, 8)].get_text().set_weight('bold')
-            else:
-                table[(i, 8)].get_text().set_color('#FF0000')
-                table[(i, 8)].get_text().set_weight('bold')
+            color = '#008000' if item['12m']['profitable_total'] else '#FF0000'
+            table[(i, 12)].get_text().set_color(color)
+            table[(i, 12)].get_text().set_weight('bold')
 
-        # Then set text colors for price change cells (columns 1 and 5)
-        if item['6m']['price_change_pct'] is not None:
-            if item['6m']['price_change_pct'] > 0:
+        # Color price change cells
+        # 3m Price Δ (column 1)
+        if item['3m']['price_change_pct'] is not None:
+            if item['3m']['price_change_pct'] > 0:
                 table[(i, 1)].get_text().set_color('#008000')
                 table[(i, 1)].get_text().set_weight('bold')
-            elif item['6m']['price_change_pct'] < 0:
+            elif item['3m']['price_change_pct'] < 0:
                 table[(i, 1)].get_text().set_color('#FF0000')
                 table[(i, 1)].get_text().set_weight('bold')
 
-        if item['12m']['price_change_pct'] is not None:
-            if item['12m']['price_change_pct'] > 0:
+        # 6m Price Δ (column 5)
+        if item['6m']['price_change_pct'] is not None:
+            if item['6m']['price_change_pct'] > 0:
                 table[(i, 5)].get_text().set_color('#008000')
                 table[(i, 5)].get_text().set_weight('bold')
-            elif item['12m']['price_change_pct'] < 0:
+            elif item['6m']['price_change_pct'] < 0:
                 table[(i, 5)].get_text().set_color('#FF0000')
                 table[(i, 5)].get_text().set_weight('bold')
 
-        # Color total return cells (columns 3 and 7)
-        if item['6m']['total_return_pct'] is not None:
-            if item['6m']['total_return_pct'] > 0:
+        # 12m Price Δ (column 9)
+        if item['12m']['price_change_pct'] is not None:
+            if item['12m']['price_change_pct'] > 0:
+                table[(i, 9)].get_text().set_color('#008000')
+                table[(i, 9)].get_text().set_weight('bold')
+            elif item['12m']['price_change_pct'] < 0:
+                table[(i, 9)].get_text().set_color('#FF0000')
+                table[(i, 9)].get_text().set_weight('bold')
+
+        # Color total return cells
+        # 3m Total (column 3)
+        if item['3m']['total_return_pct'] is not None:
+            if item['3m']['total_return_pct'] > 0:
                 table[(i, 3)].get_text().set_color('#008000')
                 table[(i, 3)].get_text().set_weight('bold')
-            elif item['6m']['total_return_pct'] < 0:
+            elif item['3m']['total_return_pct'] < 0:
                 table[(i, 3)].get_text().set_color('#FF0000')
                 table[(i, 3)].get_text().set_weight('bold')
 
-        if item['12m']['total_return_pct'] is not None:
-            if item['12m']['total_return_pct'] > 0:
+        # 6m Total (column 7)
+        if item['6m']['total_return_pct'] is not None:
+            if item['6m']['total_return_pct'] > 0:
                 table[(i, 7)].get_text().set_color('#008000')
                 table[(i, 7)].get_text().set_weight('bold')
-            elif item['12m']['total_return_pct'] < 0:
+            elif item['6m']['total_return_pct'] < 0:
                 table[(i, 7)].get_text().set_color('#FF0000')
                 table[(i, 7)].get_text().set_weight('bold')
+
+        # 12m Total (column 11)
+        if item['12m']['total_return_pct'] is not None:
+            if item['12m']['total_return_pct'] > 0:
+                table[(i, 11)].get_text().set_color('#008000')
+                table[(i, 11)].get_text().set_weight('bold')
+            elif item['12m']['total_return_pct'] < 0:
+                table[(i, 11)].get_text().set_color('#FF0000')
+                table[(i, 11)].get_text().set_weight('bold')
 
     # Don't add a title - the main figure title is enough
 
@@ -224,6 +260,7 @@ def main():
         analyzer = DividendAnalyzer(dividends, prices)
 
         # Calculate metrics
+        metrics_3m = analyzer.calculate_metrics(months=3)
         metrics_6m = analyzer.calculate_metrics(months=6)
         metrics_12m = analyzer.calculate_metrics(months=12)
 
@@ -233,6 +270,7 @@ def main():
         table_data.append({
             'symbol': symbol,
             'price_history': price_history,
+            '3m': metrics_3m,
             '6m': metrics_6m,
             '12m': metrics_12m
         })
@@ -261,12 +299,15 @@ def main():
     ax_table = fig.add_subplot(gs[0, :])
     create_summary_table(ax_table, table_data)
 
-    # Create comparison charts (row 1 and 2, split in half)
-    # 6m on left, 12m on right to align with table above
-    ax_comp_6m = fig.add_subplot(gs[1:3, :3])
+    # Create comparison charts (row 1 and 2, split in thirds)
+    # 3m, 6m, and 12m to align with table above
+    ax_comp_3m = fig.add_subplot(gs[1:3, :2])
+    create_performance_comparison(ax_comp_3m, table_data, '3m')
+
+    ax_comp_6m = fig.add_subplot(gs[1:3, 2:4])
     create_performance_comparison(ax_comp_6m, table_data, '6m')
 
-    ax_comp_12m = fig.add_subplot(gs[1:3, 3:])
+    ax_comp_12m = fig.add_subplot(gs[1:3, 4:])
     create_performance_comparison(ax_comp_12m, table_data, '12m')
 
     # Create price charts starting from row 4 (after spacer row 3)
