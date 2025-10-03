@@ -2,6 +2,8 @@
 
 Generates a comprehensive report analyzing dividend and price performance for publicly tradeable stocks and ETFs using historical data from the Polygon API.
 
+<img width="2945" height="3221" alt="image" src="https://github.com/user-attachments/assets/d522f810-f052-4ec7-ab18-f43bb31f9ca8" />
+
 ## Prerequisites
 
 - Python 3.7 or higher installed on your computer
