@@ -100,6 +100,7 @@ class DividendAnalyzer:
                 'price_change': None,
                 'price_change_pct': None,
                 'total_dividends': None,
+                'dividend_yield_pct': None,
                 'total_return': None,
                 'total_return_pct': None,
                 'profitable_price': None,
@@ -124,6 +125,7 @@ class DividendAnalyzer:
                 'price_change': None,
                 'price_change_pct': None,
                 'total_dividends': None,
+                'dividend_yield_pct': None,
                 'total_return': None,
                 'total_return_pct': None,
                 'profitable_price': None,
@@ -136,6 +138,7 @@ class DividendAnalyzer:
 
         # Calculate dividends
         total_dividends = self.get_dividends_in_period(start_date, end_date)
+        dividend_yield_pct = (total_dividends / start_price) * 100
 
         # Calculate total return
         total_return = price_change + total_dividends
@@ -150,6 +153,7 @@ class DividendAnalyzer:
             'price_change': round(price_change, 2),
             'price_change_pct': round(price_change_pct, 2),
             'total_dividends': round(total_dividends, 2),
+            'dividend_yield_pct': round(dividend_yield_pct, 2),
             'total_return': round(total_return, 2),
             'total_return_pct': round(total_return_pct, 2),
             'profitable_price': price_change > 0,

@@ -48,10 +48,12 @@ def create_summary_table(ax, table_data: List[Dict]):
                 return 'N/A'
             return f"{v:+.1f}%" if v != 'N/A' else 'N/A'
 
-        def fmt_dollars(v):
+        def fmt_dollars(v, yield_pct=None):
             if v is None:
                 return 'N/A'
-            return f"${v:.1f}" if v != 'N/A' else 'N/A'
+            if yield_pct is None:
+                return f"${v:.1f}" if v != 'N/A' else 'N/A'
+            return f"${v:.1f} ({yield_pct:.1f}%)" if v != 'N/A' and yield_pct is not None else 'N/A'
 
         def fmt_profit(v):
             if v is None:
@@ -61,15 +63,15 @@ def create_summary_table(ax, table_data: List[Dict]):
         row = [
             item['symbol'],
             fmt_pct(item['3m']['price_change_pct']),
-            fmt_dollars(item['3m']['total_dividends']),
+            fmt_dollars(item['3m']['total_dividends'], item['3m']['dividend_yield_pct']),
             fmt_pct(item['3m']['total_return_pct']),
             fmt_profit(item['3m']['profitable_total']),
             fmt_pct(item['6m']['price_change_pct']),
-            fmt_dollars(item['6m']['total_dividends']),
+            fmt_dollars(item['6m']['total_dividends'], item['6m']['dividend_yield_pct']),
             fmt_pct(item['6m']['total_return_pct']),
             fmt_profit(item['6m']['profitable_total']),
             fmt_pct(item['12m']['price_change_pct']),
-            fmt_dollars(item['12m']['total_dividends']),
+            fmt_dollars(item['12m']['total_dividends'], item['12m']['dividend_yield_pct']),
             fmt_pct(item['12m']['total_return_pct']),
             fmt_profit(item['12m']['profitable_total'])
         ]

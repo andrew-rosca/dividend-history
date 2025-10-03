@@ -64,6 +64,13 @@ def format_value(value, is_pct=False, show_sign=True):
         return f"{sign}${value:.2f}"
 
 
+def format_dividend(amount, yield_pct):
+    """Format dividend amount with yield percentage."""
+    if amount is None or yield_pct is None:
+        return "N/A"
+    return f"${amount:.2f} ({yield_pct:.1f}%)"
+
+
 def format_bool(value):
     """Format boolean as checkmark or X."""
     if value is None:
@@ -83,12 +90,12 @@ def print_table(data: List[Dict]):
         "Symbol",
         "Chart (12m)",
         "Price Δ 6m",
-        "Div 6m",
+        "Div 6m ($+%)",
         "Total 6m",
         "✓ Price",
         "✓ Total",
         "Price Δ 12m",
-        "Div 12m",
+        "Div 12m ($+%)",
         "Total 12m",
         "✓ Price",
         "✓ Total"
@@ -97,6 +104,8 @@ def print_table(data: List[Dict]):
     # Calculate column widths
     col_widths = [len(h) for h in headers]
     col_widths[1] = 20  # Chart width
+    col_widths[3] = 15  # Div 6m column needs more space for "$X.XX (Y.Y%)"
+    col_widths[8] = 15  # Div 12m column needs more space for "$X.XX (Y.Y%)"
 
     # Print header
     print("\n" + "=" * (sum(col_widths) + len(col_widths) * 3 - 1))
@@ -109,12 +118,12 @@ def print_table(data: List[Dict]):
             item['symbol'].ljust(col_widths[0]),
             item['chart'].ljust(col_widths[1]),
             format_value(item['6m']['price_change_pct'], True).ljust(col_widths[2]),
-            format_value(item['6m']['total_dividends'], False, False).ljust(col_widths[3]),
+            format_dividend(item['6m']['total_dividends'], item['6m']['dividend_yield_pct']).ljust(col_widths[3]),
             format_value(item['6m']['total_return_pct'], True).ljust(col_widths[4]),
             format_bool(item['6m']['profitable_price']).ljust(col_widths[5]),
             format_bool(item['6m']['profitable_total']).ljust(col_widths[6]),
             format_value(item['12m']['price_change_pct'], True).ljust(col_widths[7]),
-            format_value(item['12m']['total_dividends'], False, False).ljust(col_widths[8]),
+            format_dividend(item['12m']['total_dividends'], item['12m']['dividend_yield_pct']).ljust(col_widths[8]),
             format_value(item['12m']['total_return_pct'], True).ljust(col_widths[9]),
             format_bool(item['12m']['profitable_price']).ljust(col_widths[10]),
             format_bool(item['12m']['profitable_total']).ljust(col_widths[11])
