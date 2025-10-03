@@ -60,3 +60,7 @@ Edit `config.yaml` to customize:
 - `symbols`: List of ticker symbols to analyze
 - `rate_limit_requests_per_minute`: API rate limit (default: 5 for free tier)
 - `data_directory`: Where to store data (default: data)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
