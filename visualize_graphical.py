@@ -295,7 +295,9 @@ def main():
                            hspace=0.15, wspace=0.3,
                            top=0.96, bottom=0.02)
 
-    fig.suptitle('ETF Dividend & Price Performance Analysis', fontsize=18, fontweight='bold', y=0.985)
+    from datetime import datetime
+    analysis_date = datetime.now().strftime('%B %d, %Y')
+    fig.suptitle(f'ETF Dividend & Price Performance Analysis (as of {analysis_date})', fontsize=18, fontweight='bold', y=0.985)
 
     # Create summary table (row 0, spanning all columns)
     ax_table = fig.add_subplot(gs[0, :])
@@ -311,6 +313,12 @@ def main():
 
     ax_comp_12m = fig.add_subplot(gs[1:3, 4:])
     create_performance_comparison(ax_comp_12m, table_data, '12m')
+
+    # Add note about price chart timeframe in spacer row 3
+    ax_note = fig.add_subplot(gs[3, :])
+    ax_note.axis('off')
+    ax_note.text(0.5, 0.2, '12-Month Price History (most recent closing price shown)',
+                ha='center', va='top', fontsize=10, style='italic', color='#666666')
 
     # Create price charts starting from row 4 (after spacer row 3)
     for idx, item in enumerate(table_data):
@@ -329,19 +337,40 @@ def main():
 
         values = [p[1] for p in prices]
 
+        # Pad with NaN at the beginning if less than ~252 trading days (12 months)
+        # Approximate 12 months as 252 trading days (21 days/month * 12)
+        expected_days = 252
+        padding_needed = max(0, expected_days - len(values))
+
+        if padding_needed > 0:
+            padded_values = [None] * padding_needed + values
+            x_indices = range(len(padded_values))
+            # Find first non-None index
+            first_valid_idx = padding_needed
+        else:
+            padded_values = values
+            x_indices = range(len(padded_values))
+            first_valid_idx = 0
+
         # Plot
-        ax.plot(values, linewidth=1, color='#1f77b4')
-        ax.fill_between(range(len(values)), values, alpha=0.3)
+        ax.plot(x_indices, padded_values, linewidth=1, color='#1f77b4')
+
+        # Fill only the valid data area
+        if first_valid_idx < len(padded_values):
+            valid_x = list(range(first_valid_idx, len(padded_values)))
+            valid_y = padded_values[first_valid_idx:]
+            ax.fill_between(valid_x, valid_y, alpha=0.3)
 
         # Style
         ax.set_title(item['symbol'], fontweight='bold', fontsize=9)
         ax.grid(True, alpha=0.3)
         ax.tick_params(axis='x', labelbottom=False)
         ax.tick_params(labelsize=7)
+        ax.set_xlim(0, expected_days - 1)  # Set consistent x-axis range
 
         # Add current price
         if values:
-            ax.text(len(values)-1, values[-1], f'${values[-1]:.1f}',
+            ax.text(len(padded_values)-1, values[-1], f'${values[-1]:.1f}',
                    fontsize=7, ha='left', va='center',
                    bbox=dict(boxstyle='round,pad=0.2', facecolor='yellow', alpha=0.5))
 
