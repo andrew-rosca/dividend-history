@@ -400,8 +400,7 @@ def main():
             ax.fill_between(valid_x, valid_y, alpha=0.3)
 
         # Style - add frequency indicator to title
-        freq_icon = get_frequency_icon(item.get('dividend_frequency', ''))
-        title_text = f"{item['symbol']} {freq_icon}" if freq_icon else item['symbol']
+        title_text = item['symbol']
         ax.set_title(title_text, fontweight='bold', fontsize=9)
         ax.grid(True, alpha=0.3)
         ax.tick_params(axis='x', labelbottom=False)
