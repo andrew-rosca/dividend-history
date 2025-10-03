@@ -9,8 +9,13 @@ Downloads and stores dividend and price history for configured ETF symbols using
 pip install -r requirements.txt
 ```
 
-2. Configure your settings in `config.yaml`:
-   - Add your Polygon API key
+2. Create your configuration file:
+```bash
+cp config.sample.yaml config.yaml
+```
+
+3. Edit `config.yaml` with your settings:
+   - Replace `YOUR_POLYGON_API_KEY_HERE` with your Polygon API key
    - Add/modify the list of symbols to track
    - Adjust rate limits if needed (free tier: 5 req/min)
 

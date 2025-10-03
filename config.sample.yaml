@@ -1,0 +1,15 @@
+# Polygon API Configuration
+polygon_api_key: YOUR_POLYGON_API_KEY_HERE
+
+# List of symbols to track
+symbols:
+  - SPYI
+  - XDTE
+  - QQQI
+  - O
+
+# Rate limiting (Polygon free tier: 5 requests/minute)
+rate_limit_requests_per_minute: 5
+
+# Local data storage directory
+data_directory: data
