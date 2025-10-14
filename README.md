@@ -71,6 +71,20 @@ This will:
 
 **Note:** `report.py` uses cached data only. To get updated data, run `fetch_data.py` first.
 
+### Build the Web Dashboard
+
+Create a static, browser-based visualization of the report metrics:
+```bash
+python build_web_dashboard.py --output-dir build/web_dashboard
+```
+
+This will:
+- Recompute the analysis using cached data
+- Copy the dashboard assets from `web_dashboard/`
+- Produce `build/web_dashboard/assets/data.json` with the latest metrics
+
+Open `build/web_dashboard/index.html` locally or deploy the entire `build/web_dashboard/` directory to any static hosting provider. When testing from disk, make sure you’re using the generated `build/web_dashboard/index.html` (it includes the embedded `assets/data.js`).
+
 ## Configuration
 
 Edit `config.yaml` to customize:

@@ -3,26 +3,15 @@
 Graphical visualization for dividend and price analysis.
 Creates charts and tables using matplotlib.
 """
-import yaml
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.table import Table
 import numpy as np
-from typing import List, Dict, Tuple
-from data_manager import DataManager
-from analyzer import DividendAnalyzer
-import matplotlib.font_manager as fm
+from typing import List, Dict
+from report_data import collect_report_data
 
 # Configure font fallback: DejaVu Sans for regular text (supports bold),
 # Apple Symbols for Unicode circled characters
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Apple Symbols', 'Helvetica', 'Arial']
 plt.rcParams['font.family'] = 'sans-serif'
-
-
-def load_config(config_path: str = 'config.yaml') -> dict:
-    """Load configuration from YAML file."""
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
 
 
 def get_frequency_icon(freq: str) -> str:
@@ -273,50 +262,12 @@ def create_performance_comparison(ax, table_data: List[Dict], period: str = '12m
 def main():
     """Main execution function."""
     print("Loading configuration...")
-    config = load_config()
 
-    # Initialize data manager
-    data_manager = DataManager(config['data_directory'])
+    table_data, metadata = collect_report_data()
 
-    # Collect data for all symbols
-    table_data = []
-
-    for symbol in config['symbols']:
-        print(f"Processing {symbol}...")
-
-        # Load data
-        dividends = data_manager.load_dividends(symbol)
-        prices = data_manager.load_prices(symbol)
-
-        if not prices:
-            print(f"  No price data for {symbol}, skipping...")
-            continue
-
-        # Analyze
-        analyzer = DividendAnalyzer(dividends, prices)
-
-        # Calculate metrics
-        metrics_3m = analyzer.calculate_metrics(months=3)
-        metrics_6m = analyzer.calculate_metrics(months=6)
-        metrics_12m = analyzer.calculate_metrics(months=12)
-
-        # Get price history
-        price_history = analyzer.get_price_history(months=12)
-
-        # Get dividend frequency
-        dividend_freq = analyzer.get_dividend_frequency()
-
-        table_data.append({
-            'symbol': symbol,
-            'price_history': price_history,
-            'dividend_frequency': dividend_freq,
-            '3m': metrics_3m,
-            '6m': metrics_6m,
-            '12m': metrics_12m
-        })
-
-    # Sort alphabetically by symbol
-    table_data.sort(key=lambda x: x['symbol'])
+    if not table_data:
+        print("No symbols with price data were found. Nothing to visualize.")
+        return
 
     # Create figure with better layout
     symbols_per_row = 6
@@ -333,8 +284,7 @@ def main():
                            hspace=0.15, wspace=0.3,
                            top=0.96, bottom=0.02)
 
-    from datetime import datetime
-    analysis_date = datetime.now().strftime('%B %d, %Y')
+    analysis_date = metadata.get('analysis_date', '')
     fig.suptitle(f'ETF Dividend & Price Performance Analysis (as of {analysis_date})', fontsize=18, fontweight='bold', y=0.985)
 
     # Create summary table (row 0, spanning all columns)
@@ -373,7 +323,7 @@ def main():
             ax.axis('off')
             continue
 
-        values = [p[1] for p in prices]
+        values = [np.nan if p[1] is None else float(p[1]) for p in prices]
 
         # Pad with NaN at the beginning if less than ~252 trading days (12 months)
         # Approximate 12 months as 252 trading days (21 days/month * 12)
@@ -381,21 +331,20 @@ def main():
         padding_needed = max(0, expected_days - len(values))
 
         if padding_needed > 0:
-            padded_values = [None] * padding_needed + values
-            x_indices = range(len(padded_values))
-            # Find first non-None index
+            padded_values = np.array([np.nan] * padding_needed + values, dtype=float)
             first_valid_idx = padding_needed
         else:
-            padded_values = values
-            x_indices = range(len(padded_values))
+            padded_values = np.array(values, dtype=float)
             first_valid_idx = 0
+
+        x_indices = np.arange(len(padded_values))
 
         # Plot
         ax.plot(x_indices, padded_values, linewidth=1, color='#1f77b4')
 
         # Fill only the valid data area
         if first_valid_idx < len(padded_values):
-            valid_x = list(range(first_valid_idx, len(padded_values)))
+            valid_x = x_indices[first_valid_idx:]
             valid_y = padded_values[first_valid_idx:]
             ax.fill_between(valid_x, valid_y, alpha=0.3)
 

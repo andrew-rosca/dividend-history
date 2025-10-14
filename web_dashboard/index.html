@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETF Dividend &amp; Price Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./assets/styles.css" />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+      integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+      crossorigin="anonymous"
+    ></script>
+    <script defer src="./assets/data.js"></script>
+    <script defer src="./assets/app.js"></script>
+  </head>
+  <body>
+    <noscript>
+      <div class="noscript-warning">
+        This dashboard requires JavaScript to display the interactive charts and
+        tables.
+      </div>
+    </noscript>
+    <div class="page">
+      <header class="page-header">
+        <div>
+          <h1>ETF Dividend &amp; Price Dashboard</h1>
+          <p class="updated">
+            Data as of <span data-analysis-date>&mdash;</span>
+          </p>
+        </div>
+        <section class="summary-stats" aria-live="polite">
+          <div class="stat">
+            <span class="stat-label">Symbols loaded</span>
+            <span class="stat-value" data-symbol-count>0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Symbols skipped</span>
+            <span class="stat-value" data-symbol-skipped>0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Periods shown</span>
+            <span class="stat-value">3m • 6m • 12m</span>
+          </div>
+        </section>
+      </header>
+
+      <main class="layout">
+        <section class="card table-card">
+          <div class="card-header">
+            <div>
+              <h2>Performance Summary</h2>
+              <p class="card-subtitle">
+                Click a row to explore price history and dive into detailed
+                metrics.
+              </p>
+            </div>
+          </div>
+          <div class="table-wrapper" data-table-container>
+            <table id="summary-table">
+              <thead>
+                <tr>
+                  <th rowspan="2" class="sticky-col">Symbol</th>
+                  <th colspan="4" class="group-heading col-group-3m">3 Month</th>
+                  <th colspan="4" class="group-heading col-group-6m">6 Month</th>
+                  <th colspan="4" class="group-heading col-group-12m">12 Month</th>
+                </tr>
+                <tr>
+                  <th class="metric-heading group-start group-start-first col-group-3m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-3m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-3m metric-total">Total</th>
+                  <th class="metric-heading col-group-3m metric-result">Result</th>
+                  <th class="metric-heading group-start col-group-6m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-6m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-6m metric-total">Total</th>
+                  <th class="metric-heading col-group-6m metric-result">Result</th>
+                  <th class="metric-heading group-start col-group-12m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-12m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-12m metric-total">Total</th>
+                  <th class="metric-heading col-group-12m metric-result">Result</th>
+                </tr>
+              </thead>
+              <tbody data-table-body>
+                <tr>
+                  <td colspan="13" class="empty">Loading data…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card chart-card">
+          <div class="card-header">
+            <h2>Total Return Comparison</h2>
+            <p class="card-subtitle" data-chart-subtitle>
+              Showing price change + dividends for 3, 6, and 12 months.
+            </p>
+          </div>
+          <div class="chart-grid">
+            <figure class="chart-panel">
+              <figcaption>3 Month</figcaption>
+              <canvas id="comparison-chart-3m" data-comparison="3m" width="600" height="320" role="img" aria-label="3 month total return comparison"></canvas>
+            </figure>
+            <figure class="chart-panel">
+              <figcaption>6 Month</figcaption>
+              <canvas id="comparison-chart-6m" data-comparison="6m" width="600" height="320" role="img" aria-label="6 month total return comparison"></canvas>
+            </figure>
+            <figure class="chart-panel">
+              <figcaption>12 Month</figcaption>
+              <canvas id="comparison-chart-12m" data-comparison="12m" width="600" height="320" role="img" aria-label="12 month total return comparison"></canvas>
+            </figure>
+          </div>
+          <div class="chart-legend" data-chart-legend>
+            <span class="legend-item gain">Gain</span>
+            <span class="legend-item loss">Loss</span>
+            <span class="legend-item neutral">No data</span>
+          </div>
+        </section>
+
+        <section class="card detail-card" aria-live="polite">
+          <div class="detail-header">
+            <div>
+              <h2 data-symbol-name>Select a symbol</h2>
+              <p class="detail-subtitle">
+                Dividend frequency: <span data-div-frequency>&mdash;</span>
+              </p>
+            </div>
+            <div class="detail-meta">
+              <span>Latest close:</span>
+              <strong data-latest-close>&mdash;</strong>
+            </div>
+          </div>
+          <canvas id="price-chart" width="600" height="320" role="img" aria-label="Line chart showing price history"></canvas>
+          <div class="detail-metrics" data-detail-metrics>
+            <p class="empty">Select a row to inspect detailed metrics.</p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="page-footer">
+        <p>
+          Built for static hosting. Copy the contents of this directory (and its
+          <code>assets</code> folder) to any static web host to deploy the
+          dashboard.
+        </p>
+        <p class="attribution">
+          Visualization powered by Chart.js and data prepared by the Python
+          report pipeline.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
