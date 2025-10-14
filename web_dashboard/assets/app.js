@@ -37,6 +37,16 @@
     priceChart: null,
   };
 
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function fetchData() {
     const preloaded = window[GLOBAL_DATA_KEY];
     if (preloaded && typeof preloaded === 'object') {
@@ -141,15 +151,20 @@
   ];
 
   function buildFrequencyBadge(frequency) {
-    if (!frequency) {
-      return '<span class="frequency-pill frequency-pill--missing" role="img" aria-label="Dividend frequency not available" title="Dividend frequency not available">—</span>';
+    const freqKey = typeof frequency === 'string' ? frequency.trim().toUpperCase() : '';
+    const displayLetter = freqKey ? freqKey.charAt(0) : '—';
+    const humanLabel = freqKey ? FREQ_LABELS[freqKey] || 'Unknown' : 'Dividend frequency not available';
+    const label = freqKey ? `${humanLabel} dividends` : humanLabel;
+    const safeLabel = escapeHtml(label);
+
+    const tooltip = `<span class="frequency-tooltip">${safeLabel}</span>`;
+
+    if (!freqKey) {
+      return `<span class="frequency-pill frequency-pill--missing" role="img" aria-label="${safeLabel}">${displayLetter}${tooltip}</span>`;
     }
-    const normalized = typeof frequency === 'string' ? frequency.toLowerCase() : '';
-    const modifier = ['m', 'q', 'w'].includes(normalized) ? normalized : 'other';
-    const humanLabel = FREQ_LABELS[frequency] || FREQ_LABELS[frequency?.toUpperCase?.()] || 'Unknown';
-    const label = `${humanLabel} (${frequency}) dividends`;
-    const safeLabel = label.replace(/"/g, '&quot;');
-    return `<span class="frequency-pill frequency-pill--${modifier}" role="img" aria-label="${safeLabel}" title="${safeLabel}">${frequency}</span>`;
+
+    const modifier = ['M', 'Q', 'W'].includes(freqKey) ? freqKey.toLowerCase() : 'other';
+    return `<span class="frequency-pill frequency-pill--${modifier}" role="img" aria-label="${safeLabel}">${displayLetter}${tooltip}</span>`;
   }
 
   function createRow(symbol) {
@@ -158,10 +173,6 @@
     tr.setAttribute('role', 'button');
     tr.setAttribute('tabindex', '0');
 
-    const freqLabel = symbol.dividendFrequency
-      ? `${FREQ_LABELS[symbol.dividendFrequency] || 'Unknown'} (${symbol.dividendFrequency})`
-      : 'Not available';
-    const symbolCellTitle = freqLabel.replace(/"/g, '&quot;');
     const frequencyBadge = buildFrequencyBadge(symbol.dividendFrequency);
     const metricsCells = PERIODS.map((period) =>
       METRIC_COLUMNS.map(({ key, className, render }, index) => {
@@ -185,7 +196,7 @@
 
     tr.innerHTML = `
       <td class="sticky-col">
-        <span class="symbol-cell" title="${symbolCellTitle}">
+        <span class="symbol-cell">
           <span class="symbol-ticker">${symbol.symbol}</span>
           ${frequencyBadge}
         </span>
@@ -204,8 +215,6 @@
         handleSelect();
       }
     });
-
-    tr.title = freqLabel;
 
     return tr;
   }
