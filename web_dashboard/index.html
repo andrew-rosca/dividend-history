@@ -94,53 +94,6 @@
             </table>
           </div>
         </section>
-
-        <section class="card chart-card">
-          <div class="card-header">
-            <h2>Total Return Comparison</h2>
-            <p class="card-subtitle" data-chart-subtitle>
-              Showing price change + dividends for 3, 6, and 12 months.
-            </p>
-          </div>
-          <div class="chart-grid">
-            <figure class="chart-panel">
-              <figcaption>3 Month</figcaption>
-              <canvas id="comparison-chart-3m" data-comparison="3m" width="600" height="320" role="img" aria-label="3 month total return comparison"></canvas>
-            </figure>
-            <figure class="chart-panel">
-              <figcaption>6 Month</figcaption>
-              <canvas id="comparison-chart-6m" data-comparison="6m" width="600" height="320" role="img" aria-label="6 month total return comparison"></canvas>
-            </figure>
-            <figure class="chart-panel">
-              <figcaption>12 Month</figcaption>
-              <canvas id="comparison-chart-12m" data-comparison="12m" width="600" height="320" role="img" aria-label="12 month total return comparison"></canvas>
-            </figure>
-          </div>
-          <div class="chart-legend" data-chart-legend>
-            <span class="legend-item gain">Gain</span>
-            <span class="legend-item loss">Loss</span>
-            <span class="legend-item neutral">No data</span>
-          </div>
-        </section>
-
-        <section class="card detail-card" aria-live="polite">
-          <div class="detail-header">
-            <div>
-              <h2 data-symbol-name>Select a symbol</h2>
-              <p class="detail-subtitle">
-                Dividend frequency: <span data-div-frequency>&mdash;</span>
-              </p>
-            </div>
-            <div class="detail-meta">
-              <span>Latest close:</span>
-              <strong data-latest-close>&mdash;</strong>
-            </div>
-          </div>
-          <canvas id="price-chart" width="600" height="320" role="img" aria-label="Line chart showing price history"></canvas>
-          <div class="detail-metrics" data-detail-metrics>
-            <p class="empty">Select a row to inspect detailed metrics.</p>
-          </div>
-        </section>
       </main>
 
       <footer class="page-footer">

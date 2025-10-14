@@ -3,7 +3,6 @@
 (function () {
   const GLOBAL_DATA_KEY = '__DIVIDEND_DASHBOARD__';
   const PERIODS = ['3m', '6m', '12m'];
-  const COMPARISON_PERIODS = ['3m', '6m', '12m'];
   const FREQ_LABELS = {
     M: 'Monthly',
     Q: 'Quarterly',
@@ -23,18 +22,18 @@
     analysisDate: document.querySelector('[data-analysis-date]'),
     symbolCount: document.querySelector('[data-symbol-count]'),
     skippedCount: document.querySelector('[data-symbol-skipped]'),
-    chartSubtitle: document.querySelector('[data-chart-subtitle]'),
-    symbolName: document.querySelector('[data-symbol-name]'),
-    divFrequency: document.querySelector('[data-div-frequency]'),
-    latestClose: document.querySelector('[data-latest-close]'),
-    detailMetrics: document.querySelector('[data-detail-metrics]'),
   };
+
+  if (!elements.tableBody) {
+    console.error('Dividend dashboard: missing [data-table-body] element. Aborting initialization.');
+    return;
+  }
 
   const state = {
     data: null,
     selectedSymbol: null,
-    comparisonCharts: {},
-    priceChart: null,
+    inlineChart: null,
+    inlineChartSymbol: null,
   };
 
   function escapeHtml(value) {
@@ -168,19 +167,24 @@
   }
 
   function createRow(symbol) {
-    const tr = document.createElement('tr');
-    tr.dataset.symbol = symbol.symbol;
-    tr.setAttribute('role', 'button');
-    tr.setAttribute('tabindex', '0');
+    const mainRow = document.createElement('tr');
+    mainRow.dataset.symbol = symbol.symbol;
+    mainRow.classList.add('summary-row');
+    mainRow.setAttribute('role', 'button');
+    mainRow.setAttribute('tabindex', '0');
+
+    const detailId = `inline-detail-${symbol.symbol}`;
+    mainRow.setAttribute('aria-controls', detailId);
+    mainRow.setAttribute('aria-expanded', 'false');
 
     const frequencyBadge = buildFrequencyBadge(symbol.dividendFrequency);
     const metricsCells = PERIODS.map((period) =>
-      METRIC_COLUMNS.map(({ key, className, render }, index) => {
+      METRIC_COLUMNS.map(({ className, render }, index) => {
         const metric = symbol.metrics[period];
         const value = render(metric);
         const classes = [
           'metric-cell',
-          `col-group`,
+          'col-group',
           `col-group-${period}`,
           className,
         ];
@@ -194,7 +198,7 @@
       }).join('')
     ).join('');
 
-    tr.innerHTML = `
+    mainRow.innerHTML = `
       <td class="sticky-col">
         <span class="symbol-cell">
           <span class="symbol-ticker">${symbol.symbol}</span>
@@ -204,23 +208,243 @@
       ${metricsCells}
     `;
 
+    const detailRow = document.createElement('tr');
+    detailRow.className = 'detail-row is-collapsed';
+    detailRow.dataset.symbol = symbol.symbol;
+    detailRow.id = detailId;
+
+    const detailCell = document.createElement('td');
+    detailCell.colSpan = 13;
+    detailCell.innerHTML = `
+      <div class="inline-detail" data-inline-detail>
+        <div class="inline-detail-head">
+          <span class="inline-detail-title">${symbol.symbol} price history</span>
+          <span class="inline-detail-meta" data-inline-latest>Latest close: ${NO_VALUE}</span>
+        </div>
+        <div class="inline-chart-wrapper">
+          <canvas class="inline-chart" data-inline-chart height="240" role="img" aria-label="${symbol.symbol} price history"></canvas>
+          <p class="inline-chart-empty" data-inline-empty hidden>No price history available for this symbol.</p>
+        </div>
+        <div class="inline-metrics" data-inline-metrics></div>
+      </div>
+    `;
+
+    detailRow.appendChild(detailCell);
+
     function handleSelect() {
       selectSymbol(symbol.symbol);
     }
 
-    tr.addEventListener('click', handleSelect);
-    tr.addEventListener('keydown', (event) => {
+    mainRow.addEventListener('click', handleSelect);
+    mainRow.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         handleSelect();
       }
     });
 
-    return tr;
+    return { mainRow, detailRow };
+  }
+
+  function destroyInlineChart() {
+    if (state.inlineChart) {
+      state.inlineChart.destroy();
+      state.inlineChart = null;
+    }
+
+    if (state.inlineChartSymbol && elements.tableBody) {
+      const detailRow = elements.tableBody.querySelector(`tr.detail-row[data-symbol="${state.inlineChartSymbol}"]`);
+      if (detailRow) {
+        const canvas = detailRow.querySelector('[data-inline-chart]');
+        const emptyState = detailRow.querySelector('[data-inline-empty]');
+        if (canvas) {
+          canvas.classList.add('is-hidden');
+        }
+        if (emptyState) {
+          emptyState.hidden = true;
+        }
+      }
+    }
+
+    state.inlineChartSymbol = null;
+  }
+
+  function collapseActiveRow() {
+    if (!state.selectedSymbol) {
+      return;
+    }
+
+    const symbolId = state.selectedSymbol.symbol;
+    if (!elements.tableBody) {
+      state.selectedSymbol = null;
+      return;
+    }
+
+    const mainRow = elements.tableBody.querySelector(`tr.summary-row[data-symbol="${symbolId}"]`);
+    const detailRow = elements.tableBody.querySelector(`tr.detail-row[data-symbol="${symbolId}"]`);
+
+    if (mainRow) {
+      mainRow.classList.remove('is-selected', 'is-expanded');
+      mainRow.setAttribute('aria-expanded', 'false');
+    }
+
+    if (detailRow) {
+      detailRow.classList.add('is-collapsed');
+    }
+
+    destroyInlineChart();
+    state.selectedSymbol = null;
+  }
+
+  function renderInlineMetrics(detailRow, symbol) {
+    const container = detailRow.querySelector('[data-inline-metrics]');
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
+    PERIODS.forEach((period) => {
+      const metrics = symbol.metrics[period];
+      const card = document.createElement('article');
+      card.className = 'inline-metric-card';
+      const result = formatResult(metrics ? metrics.profitable_total : null);
+      card.innerHTML = `
+        <h3>${period.toUpperCase()}</h3>
+        <div class="inline-metric-value">${totalReturnDisplay(metrics)}</div>
+        <div class="inline-metric-sub">Price Δ: ${priceDeltaDisplay(metrics)}</div>
+        <div class="inline-metric-sub">Dividends: ${dividendsDisplay(metrics)}</div>
+        <span class="inline-metric-result ${result.className}">${result.text}</span>
+      `;
+      fragment.appendChild(card);
+    });
+
+    container.appendChild(fragment);
+  }
+
+  function expandRow(symbol) {
+    const symbolId = symbol.symbol;
+    if (!elements.tableBody) {
+      return;
+    }
+
+    const mainRow = elements.tableBody.querySelector(`tr.summary-row[data-symbol="${symbolId}"]`);
+    const detailRow = elements.tableBody.querySelector(`tr.detail-row[data-symbol="${symbolId}"]`);
+
+    if (!mainRow || !detailRow) {
+      return;
+    }
+
+    mainRow.classList.add('is-selected', 'is-expanded');
+    mainRow.setAttribute('aria-expanded', 'true');
+    detailRow.classList.remove('is-collapsed');
+
+    const latestLabel = detailRow.querySelector('[data-inline-latest]');
+    const emptyState = detailRow.querySelector('[data-inline-empty]');
+    const canvas = detailRow.querySelector('[data-inline-chart]');
+
+    destroyInlineChart();
+
+    if (latestLabel) {
+      const latest = latestPriceInfo(symbol);
+      latestLabel.textContent = latest.value === null
+        ? 'No recent price data'
+        : `Latest close: ${formatCurrency(latest.value, { fractionDigits: 2 })}${latest.date ? ` (${latest.date})` : ''}`;
+    }
+
+    if (!canvas) {
+      if (emptyState) {
+        emptyState.hidden = false;
+      }
+      return;
+    }
+
+    if (!symbol.priceHistory.length) {
+      canvas.classList.add('is-hidden');
+      if (emptyState) {
+        emptyState.hidden = false;
+      }
+      return;
+    }
+
+    canvas.classList.remove('is-hidden');
+    if (emptyState) {
+      emptyState.hidden = true;
+    }
+
+    const labels = symbol.priceHistory.map((point) => point[0]);
+    const data = symbol.priceHistory.map((point) => Number(point[1]));
+    const ctx = canvas.getContext('2d');
+
+    state.inlineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: `${symbol.symbol} close price`,
+            data,
+            borderColor: COLORS.accent,
+            backgroundColor: COLORS.accentFill,
+            tension: 0.25,
+            fill: 'start',
+            pointRadius: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 8,
+              color: '#475569',
+            },
+            grid: {
+              display: false,
+            },
+          },
+          y: {
+            ticks: {
+              color: '#475569',
+              callback: (value) => `$${value}`,
+            },
+            grid: {
+              color: 'rgba(148, 163, 184, 0.25)',
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const price = context.parsed.y;
+                return `${formatCurrency(price)} on ${context.label}`;
+              },
+            },
+          },
+        },
+      },
+    });
+
+    state.inlineChartSymbol = symbolId;
+
+    renderInlineMetrics(detailRow, symbol);
   }
 
   function populateTable() {
     const { tableBody } = elements;
+    if (!tableBody) {
+      console.error('Dividend dashboard: table body unavailable during populateTable().');
+      return;
+    }
+    destroyInlineChart();
+    state.selectedSymbol = null;
     tableBody.innerHTML = '';
 
     if (!state.data || !state.data.symbols.length) {
@@ -232,7 +456,9 @@
 
     const fragment = document.createDocumentFragment();
     state.data.symbols.forEach((symbol) => {
-      fragment.appendChild(createRow(symbol));
+      const { mainRow, detailRow } = createRow(symbol);
+      fragment.appendChild(mainRow);
+      fragment.appendChild(detailRow);
     });
 
     tableBody.appendChild(fragment);
@@ -240,260 +466,25 @@
 
   function selectSymbol(symbolId) {
     if (!state.data) return;
+
+    const wasSelected = state.selectedSymbol && state.selectedSymbol.symbol === symbolId;
     const symbol = state.data.symbols.find((item) => item.symbol === symbolId);
     if (!symbol) return;
 
+    collapseActiveRow();
+
+    if (wasSelected) {
+      return;
+    }
+
     state.selectedSymbol = symbol;
-
-    elements.tableBody.querySelectorAll('tr').forEach((row) => {
-      row.classList.toggle('is-selected', row.dataset.symbol === symbol.symbol);
-    });
-
-    renderDetailPanel();
-    updatePriceChart();
-  }
-
-  function prepareComparisonData(period) {
-    return state.data.symbols.map((symbol) => {
-      const metrics = symbol.metrics[period];
-      const raw = metrics ? metrics.total_return_pct : null;
-      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
-      return {
-        label: symbol.symbol,
-        value,
-      };
-    });
-  }
-
-  function updateComparisonCharts() {
-    if (!state.data) return;
-
-    COMPARISON_PERIODS.forEach((period) => {
-      const canvas = document.querySelector(`[data-comparison="${period}"]`);
-      if (!canvas) return;
-
-      const dataset = prepareComparisonData(period);
-      const symbolCount = dataset.length;
-  const rowHeight = symbolCount > 24 ? 20 : symbolCount > 16 ? 22 : 26;
-  const canvasHeight = Math.max(280, Math.min(540, symbolCount * rowHeight + 40));
-  canvas.height = canvasHeight;
-  canvas.style.height = `${canvasHeight}px`;
-  canvas.style.maxHeight = '540px';
-
-      const labels = dataset.map((item) => item.label);
-      const rawValues = dataset.map((item) => item.value);
-      const values = rawValues.map((value) => (typeof value === 'number' ? value : 0));
-      const backgroundColor = dataset.map((item) => {
-        if (item.value === null) return 'rgba(156, 163, 175, 0.35)';
-        return item.value >= 0 ? COLORS.gain : COLORS.loss;
-      });
-      const borderColor = dataset.map((item) => {
-        if (item.value === null) return 'rgba(156, 163, 175, 0.5)';
-        return item.value >= 0 ? COLORS.gain : COLORS.loss;
-      });
-
-      const ctx = canvas.getContext('2d');
-      const existingChart = state.comparisonCharts[period];
-
-      if (!existingChart) {
-        state.comparisonCharts[period] = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: `${period.toUpperCase()} total return (%)`,
-                data: values,
-                backgroundColor,
-                borderColor,
-                borderWidth: 1,
-                borderRadius: 8,
-                rawValues,
-                minBarLength: 4,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            scales: {
-              x: {
-                ticks: {
-                  callback: (value) => `${value > 0 ? '+' : ''}${value}%`,
-                },
-                grid: {
-                  drawBorder: false,
-                  color: 'rgba(148, 163, 184, 0.25)',
-                },
-              },
-              y: {
-                ticks: {
-                  color: '#475569',
-                  autoSkip: false,
-                },
-                grid: {
-                  display: false,
-                },
-              },
-            },
-            plugins: {
-              legend: {
-                display: false,
-              },
-              tooltip: {
-                callbacks: {
-                  label(context) {
-                    const raw = context.dataset.rawValues?.[context.dataIndex];
-                    if (raw === null || raw === undefined) {
-                      return 'No data';
-                    }
-                    return `${raw >= 0 ? '+' : ''}${raw.toFixed(2)}% total return`;
-                  },
-                },
-              },
-            },
-          },
-        });
-      } else {
-        existingChart.data.labels = labels;
-        existingChart.data.datasets[0].data = values;
-        existingChart.data.datasets[0].backgroundColor = backgroundColor;
-        existingChart.data.datasets[0].borderColor = borderColor;
-        existingChart.data.datasets[0].rawValues = rawValues;
-        existingChart.data.datasets[0].minBarLength = 4;
-        existingChart.resize(undefined, canvasHeight);
-        existingChart.update();
-      }
-    });
+    expandRow(symbol);
   }
 
   function latestPriceInfo(symbol) {
     if (!symbol.priceHistory.length) return { value: null, date: null };
     const lastPoint = symbol.priceHistory[symbol.priceHistory.length - 1];
     return { value: Number(lastPoint[1]), date: lastPoint[0] };
-  }
-
-  function renderDetailPanel() {
-    const container = elements.detailMetrics;
-
-    if (!state.selectedSymbol) {
-      elements.symbolName.textContent = 'Select a symbol';
-      elements.divFrequency.textContent = NO_VALUE;
-      elements.latestClose.textContent = NO_VALUE;
-      container.innerHTML = '<p class="empty">Select a row to inspect detailed metrics.</p>';
-      return;
-    }
-
-    const symbol = state.selectedSymbol;
-    elements.symbolName.textContent = symbol.symbol;
-    const freq = symbol.dividendFrequency;
-    elements.divFrequency.textContent = freq
-      ? `${FREQ_LABELS[freq] || 'Unknown'} (${freq})`
-      : 'Not available';
-
-    const latest = latestPriceInfo(symbol);
-    elements.latestClose.textContent = latest.value === null
-      ? NO_VALUE
-      : `${formatCurrency(latest.value, { fractionDigits: 2 })}${latest.date ? ` (${latest.date})` : ''}`;
-
-    container.innerHTML = '';
-
-    const fragment = document.createDocumentFragment();
-    PERIODS.forEach((period) => {
-      const metrics = symbol.metrics[period];
-      const card = document.createElement('div');
-      card.className = 'metric-card';
-      card.innerHTML = `
-        <h3>${period.toUpperCase()}</h3>
-        <div class="metric-value">${totalReturnDisplay(metrics)}</div>
-            <div class="metric-secondary">Price Δ: ${priceDeltaDisplay(metrics)}</div>
-        <div class="metric-secondary">Dividends: ${dividendsDisplay(metrics)}</div>
-        <div class="metric-footer ${formatResult(metrics ? metrics.profitable_total : null).className}">
-          ${formatResult(metrics ? metrics.profitable_total : null).text}
-        </div>
-      `;
-      fragment.appendChild(card);
-    });
-
-    container.appendChild(fragment);
-  }
-
-  function updatePriceChart() {
-    const ctx = document.getElementById('price-chart').getContext('2d');
-
-    if (!state.selectedSymbol || !state.selectedSymbol.priceHistory.length) {
-      if (state.priceChart) {
-        state.priceChart.destroy();
-        state.priceChart = null;
-      }
-      return;
-    }
-
-    const labels = state.selectedSymbol.priceHistory.map((point) => point[0]);
-    const data = state.selectedSymbol.priceHistory.map((point) => Number(point[1]));
-
-    if (!state.priceChart) {
-      state.priceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: `${state.selectedSymbol.symbol} close price`,
-              data,
-              borderColor: COLORS.accent,
-              backgroundColor: COLORS.accentFill,
-              tension: 0.25,
-              fill: 'start',
-              pointRadius: 0,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              ticks: {
-                maxTicksLimit: 8,
-                color: '#475569',
-              },
-              grid: {
-                display: false,
-              },
-            },
-            y: {
-              ticks: {
-                color: '#475569',
-                callback: (value) => `$${value}`,
-              },
-              grid: {
-                color: 'rgba(148, 163, 184, 0.25)',
-              },
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-            tooltip: {
-              callbacks: {
-                label(context) {
-                  const price = context.parsed.y;
-                  return `${formatCurrency(price)} on ${context.label}`;
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
-      state.priceChart.data.labels = labels;
-      state.priceChart.data.datasets[0].label = `${state.selectedSymbol.symbol} close price`;
-      state.priceChart.data.datasets[0].data = data;
-      state.priceChart.update();
-    }
   }
 
   function updateSummary(data) {
@@ -530,7 +521,6 @@
 
       updateSummary(payload);
       populateTable();
-      updateComparisonCharts();
 
       if (state.data.symbols.length) {
         selectSymbol(state.data.symbols[0].symbol);
@@ -540,8 +530,10 @@
       elements.analysisDate.textContent = 'Unavailable';
       elements.symbolCount.textContent = '0';
       elements.skippedCount.textContent = '0';
-      elements.chartSubtitle.textContent = 'Unable to load data. Rebuild the dashboard if you opened this file directly from disk.';
-      elements.tableBody.innerHTML = '<tr><td colspan="13" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
+      if (elements.tableBody) {
+        elements.tableBody.innerHTML = '<tr><td colspan="13" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
+      }
+      state.selectedSymbol = null;
     }
   }
 
