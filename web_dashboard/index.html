@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./assets/styles.css" />
+  <link rel="stylesheet" href="./assets/styles.css" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
@@ -30,38 +30,15 @@
     <div class="page">
       <header class="page-header">
         <div>
-          <h1>ETF Dividend &amp; Price Dashboard</h1>
+          <h1>ETF Dividend &amp; Price Performance Analysis</h1>
           <p class="updated">
             Data as of <span data-analysis-date>&mdash;</span>
           </p>
         </div>
-        <section class="summary-stats" aria-live="polite">
-          <div class="stat">
-            <span class="stat-label">Symbols loaded</span>
-            <span class="stat-value" data-symbol-count>0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Symbols skipped</span>
-            <span class="stat-value" data-symbol-skipped>0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Periods shown</span>
-            <span class="stat-value">3m • 6m • 12m</span>
-          </div>
-        </section>
       </header>
 
       <main class="layout">
         <section class="card table-card">
-          <div class="card-header">
-            <div>
-              <h2>Performance Summary</h2>
-              <p class="card-subtitle">
-                Click a row to explore price history and dive into detailed
-                metrics.
-              </p>
-            </div>
-          </div>
           <div class="table-wrapper" data-table-container>
             <table id="summary-table">
               <thead>
@@ -95,18 +72,6 @@
           </div>
         </section>
       </main>
-
-      <footer class="page-footer">
-        <p>
-          Built for static hosting. Copy the contents of this directory (and its
-          <code>assets</code> folder) to any static web host to deploy the
-          dashboard.
-        </p>
-        <p class="attribution">
-          Visualization powered by Chart.js and data prepared by the Python
-          report pipeline.
-        </p>
-      </footer>
     </div>
   </body>
 </html>

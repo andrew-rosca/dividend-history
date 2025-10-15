@@ -225,7 +225,6 @@
           <canvas class="inline-chart" data-inline-chart height="240" role="img" aria-label="${symbol.symbol} price history"></canvas>
           <p class="inline-chart-empty" data-inline-empty hidden>No price history available for this symbol.</p>
         </div>
-        <div class="inline-metrics" data-inline-metrics></div>
       </div>
     `;
 
@@ -294,33 +293,6 @@
 
     destroyInlineChart();
     state.selectedSymbol = null;
-  }
-
-  function renderInlineMetrics(detailRow, symbol) {
-    const container = detailRow.querySelector('[data-inline-metrics]');
-    if (!container) {
-      return;
-    }
-
-    container.innerHTML = '';
-
-    const fragment = document.createDocumentFragment();
-    PERIODS.forEach((period) => {
-      const metrics = symbol.metrics[period];
-      const card = document.createElement('article');
-      card.className = 'inline-metric-card';
-      const result = formatResult(metrics ? metrics.profitable_total : null);
-      card.innerHTML = `
-        <h3>${period.toUpperCase()}</h3>
-        <div class="inline-metric-value">${totalReturnDisplay(metrics)}</div>
-        <div class="inline-metric-sub">Price Δ: ${priceDeltaDisplay(metrics)}</div>
-        <div class="inline-metric-sub">Dividends: ${dividendsDisplay(metrics)}</div>
-        <span class="inline-metric-result ${result.className}">${result.text}</span>
-      `;
-      fragment.appendChild(card);
-    });
-
-    container.appendChild(fragment);
   }
 
   function expandRow(symbol) {
@@ -433,8 +405,6 @@
     });
 
     state.inlineChartSymbol = symbolId;
-
-    renderInlineMetrics(detailRow, symbol);
   }
 
   function populateTable() {
@@ -489,18 +459,6 @@
 
   function updateSummary(data) {
     elements.analysisDate.textContent = data.metadata.analysisDate || NO_VALUE;
-    const symbolCount = data.metadata.symbolCount ?? data.symbols.length;
-    const skippedSymbols = data.metadata.skippedSymbols ?? [];
-
-    elements.symbolCount.textContent = symbolCount;
-    elements.skippedCount.textContent = skippedSymbols.length;
-
-    const skippedStat = elements.skippedCount.closest('.stat');
-    if (skippedStat) {
-      skippedStat.title = skippedSymbols.length
-        ? `Symbols skipped due to missing price data: ${skippedSymbols.join(', ')}`
-        : '';
-    }
   }
 
   async function init() {

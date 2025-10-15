@@ -422,17 +422,20 @@ tbody tr.summary-row.is-selected {
 
 .detail-row td {
   padding: 0;
-  border-bottom: 1px solid var(--border);
+  border: none;
   background: transparent;
 }
 
 .inline-detail {
-  padding: 18px 20px 22px;
-  background: linear-gradient(180deg, rgba(241, 245, 255, 0.46), rgba(248, 250, 252, 0.9));
-  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  margin: 8px 10px 18px;
+  padding: 18px 22px 24px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(226, 232, 240, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
+  border-radius: 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .inline-detail-head {
@@ -458,13 +461,13 @@ tbody tr.summary-row.is-selected {
 
 .inline-chart-wrapper {
   position: relative;
-  min-height: 220px;
+  min-height: 0;
 }
 
 .inline-chart-wrapper canvas.inline-chart {
   width: 100% !important;
   max-width: 100%;
-  height: 240px !important;
+  height: 210px !important;
   display: block;
 }
 
@@ -476,59 +479,6 @@ tbody tr.summary-row.is-selected {
   margin: 12px 0 0;
   color: var(--text-muted);
   font-style: italic;
-}
-
-.inline-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.inline-metric-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(59, 130, 246, 0.12));
-}
-
-.inline-metric-card h3 {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.inline-metric-value {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.inline-metric-sub {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.inline-metric-result {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-.inline-metric-result.gain {
-  color: var(--gain);
-}
-
-.inline-metric-result.loss {
-  color: var(--loss);
-}
-
-.inline-metric-result.neutral {
-  color: var(--neutral);
 }
 
 td.empty {
