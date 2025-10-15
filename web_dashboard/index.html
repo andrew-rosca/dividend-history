@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETF Dividend &amp; Price Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  <link rel="stylesheet" href="./assets/styles.css" />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+      integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+      crossorigin="anonymous"
+    ></script>
+    <script defer src="./assets/data.js"></script>
+    <script defer src="./assets/app.js"></script>
+  </head>
+  <body>
+    <noscript>
+      <div class="noscript-warning">
+        This dashboard requires JavaScript to display the interactive charts and
+        tables.
+      </div>
+    </noscript>
+    <div class="page">
+      <header class="page-header">
+        <div>
+          <h1>ETF Dividend &amp; Price Performance Analysis</h1>
+          <p class="updated">
+            Data as of <span data-analysis-date>&mdash;</span>
+          </p>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="card table-card">
+          <div class="table-wrapper" data-table-container>
+            <table id="summary-table">
+              <thead>
+                <tr>
+                  <th rowspan="2" class="sticky-col">Symbol</th>
+                  <th colspan="4" class="group-heading col-group-3m">3 Month</th>
+                  <th colspan="4" class="group-heading col-group-6m">6 Month</th>
+                  <th colspan="4" class="group-heading col-group-12m">12 Month</th>
+                </tr>
+                <tr>
+                  <th class="metric-heading group-start group-start-first col-group-3m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-3m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-3m metric-total">Total</th>
+                  <th class="metric-heading col-group-3m metric-result">Result</th>
+                  <th class="metric-heading group-start col-group-6m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-6m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-6m metric-total">Total</th>
+                  <th class="metric-heading col-group-6m metric-result">Result</th>
+                  <th class="metric-heading group-start col-group-12m metric-price">Price Δ</th>
+                  <th class="metric-heading col-group-12m metric-dividends">Dividends</th>
+                  <th class="metric-heading col-group-12m metric-total">Total</th>
+                  <th class="metric-heading col-group-12m metric-result">Result</th>
+                </tr>
+              </thead>
+              <tbody data-table-body>
+                <tr>
+                  <td colspan="13" class="empty">Loading data…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
