@@ -479,10 +479,6 @@
 
       updateSummary(payload);
       populateTable();
-
-      if (state.data.symbols.length) {
-        selectSymbol(state.data.symbols[0].symbol);
-      }
     } catch (error) {
       console.error(error);
       elements.analysisDate.textContent = 'Unavailable';
