@@ -149,6 +149,32 @@
     { key: 'result', className: 'metric-result', render: buildResultCell },
   ];
 
+  function calculateHistogramIntensity(value, min, max) {
+    if (min === max || value === null || value === undefined) return 0;
+
+    // Scale all values based on the largest absolute value (min or max)
+    // This ensures -54% and +125% are proportional to each other
+    const absMin = Math.abs(min);
+    const absMax = Math.abs(max);
+    const maxAbsValue = Math.max(absMin, absMax);
+    
+    if (maxAbsValue === 0) return 0;
+    
+    // Scale the absolute value of the current value against the max absolute value
+    const proportion = Math.abs(value) / maxAbsValue;
+    return proportion * 100;
+  }
+
+  function getHistogramColor(period) {
+    // Use darker/more saturated versions of the period colors
+    const colors = {
+      '3m': 'rgba(37, 99, 235, 0.35)',   // Blue
+      '6m': 'rgba(30, 142, 62, 0.35)',   // Green
+      '12m': 'rgba(124, 58, 237, 0.35)', // Purple
+    };
+    return colors[period] || colors['3m'];
+  }
+
   function buildFrequencyBadge(frequency) {
     const freqKey = typeof frequency === 'string' ? frequency.trim().toUpperCase() : '';
     const displayLetter = freqKey ? freqKey.charAt(0) : '—';
@@ -166,7 +192,7 @@
     return `<span class="frequency-pill frequency-pill--${modifier}" role="img" aria-label="${safeLabel}">${displayLetter}${tooltip}</span>`;
   }
 
-  function createRow(symbol) {
+  function createRow(symbol, periodStats) {
     const mainRow = document.createElement('tr');
     mainRow.dataset.symbol = symbol.symbol;
     mainRow.classList.add('summary-row');
@@ -177,9 +203,41 @@
     mainRow.setAttribute('aria-controls', detailId);
     mainRow.setAttribute('aria-expanded', 'false');
 
+    // Calculate histogram intensities for each period
+    const histogramData = {};
+    PERIODS.forEach((period) => {
+      const metric = symbol.metrics[period];
+      const stats = periodStats[period];
+      const returnValue = metric?.total_return_pct;
+      if (returnValue !== null && returnValue !== undefined && stats) {
+        const intensity = calculateHistogramIntensity(returnValue, stats.min, stats.max);
+        histogramData[period] = {
+          intensity: intensity,
+          isNegative: returnValue < 0,
+          rawValue: returnValue
+        };
+      } else {
+        histogramData[period] = { intensity: 0, isNegative: false, rawValue: 0 };
+      }
+    });
+
     const frequencyBadge = buildFrequencyBadge(symbol.dividendFrequency);
-    const metricsCells = PERIODS.map((period) =>
-      METRIC_COLUMNS.map(({ className, render }, index) => {
+    const metricsCells = PERIODS.map((period) => {
+      const histData = histogramData[period];
+      const intensity = histData.intensity;
+      const isNegative = histData.isNegative;
+      const bgColor = getHistogramColor(period);
+      const baseColor = period === '3m' ? 'rgba(37, 99, 235, 0.1)' : 
+                        period === '6m' ? 'rgba(30, 142, 62, 0.1)' : 
+                        'rgba(124, 58, 237, 0.12)';
+      
+      // Use red color for negative returns
+      const barColor = isNegative ? 'rgba(239, 68, 68, 0.35)' : bgColor;
+      
+      // Calculate gradient stops for each cell position (4 cells total)
+      const numCells = METRIC_COLUMNS.length;
+      
+      return METRIC_COLUMNS.map(({ key, className, render }, index) => {
         const metric = symbol.metrics[period];
         const value = render(metric);
         const classes = [
@@ -194,9 +252,56 @@
             classes.push('group-start-first');
           }
         }
-        return `<td class="${classes.join(' ')}">${value}</td>`;
-      }).join('')
-    ).join('');
+        
+        // Calculate this cell's portion of the continuous gradient
+        // Each cell is 25% of the total width (100% / 4 cells)
+        const cellStartPct = (index / numCells) * 100;
+        const cellEndPct = ((index + 1) / numCells) * 100;
+        
+        // Scale the intensity to the full 100% range
+        const intensityScaled = intensity; // intensity is already 0-100
+        
+        let gradientStyle = '';
+        if (intensity > 0) {
+          if (isNegative) {
+            // For negative values, bar extends from right to left
+            // Flip the logic: bar starts at 100% and goes towards 0%
+            const barStartFromRight = 100 - intensityScaled;
+            
+            if (barStartFromRight <= cellStartPct) {
+              // This cell is fully covered by the bar
+              gradientStyle = `background: ${barColor};`;
+            } else if (barStartFromRight < cellEndPct) {
+              // The bar partially covers this cell (from right side)
+              const localStart = ((barStartFromRight - cellStartPct) / (cellEndPct - cellStartPct)) * 100;
+              gradientStyle = `background: linear-gradient(to right, ${baseColor} 0%, ${baseColor} ${localStart}%, ${barColor} ${localStart}%, ${barColor} 100%);`;
+            } else {
+              // This cell is before the bar starts
+              gradientStyle = `background: ${baseColor};`;
+            }
+          } else {
+            // For positive values, bar extends from left to right
+            if (intensityScaled >= cellEndPct) {
+              // This cell is fully covered by the bar
+              gradientStyle = `background: ${barColor};`;
+            } else if (intensityScaled > cellStartPct) {
+              // The bar partially covers this cell
+              const localStart = 0;
+              const localEnd = ((intensityScaled - cellStartPct) / (cellEndPct - cellStartPct)) * 100;
+              gradientStyle = `background: linear-gradient(to right, ${barColor} ${localStart}%, ${barColor} ${localEnd}%, ${baseColor} ${localEnd}%, ${baseColor} 100%);`;
+            } else {
+              // This cell is beyond the bar
+              gradientStyle = `background: ${baseColor};`;
+            }
+          }
+        } else {
+          gradientStyle = `background: ${baseColor};`;
+        }
+        
+        const style = gradientStyle ? ` style="${gradientStyle}"` : '';
+        return `<td class="${classes.join(' ')}"${style}>${value}</td>`;
+      }).join('');
+    }).join('');
 
     mainRow.innerHTML = `
       <td class="sticky-col">
@@ -449,6 +554,33 @@
     state.inlineChartSymbol = symbolId;
   }
 
+  function calculatePeriodStats() {
+    // First, collect all returns across all periods to find global min/max
+    const allReturns = [];
+    
+    PERIODS.forEach((period) => {
+      const returns = state.data.symbols
+        .map((s) => s.metrics[period]?.total_return_pct)
+        .filter((val) => val !== null && val !== undefined && !Number.isNaN(val));
+      allReturns.push(...returns);
+    });
+    
+    // Calculate global min/max across all periods
+    const globalMin = allReturns.length > 0 ? Math.min(...allReturns) : 0;
+    const globalMax = allReturns.length > 0 ? Math.max(...allReturns) : 0;
+    
+    // Apply the same global scale to all periods
+    const stats = {};
+    PERIODS.forEach((period) => {
+      stats[period] = {
+        min: globalMin,
+        max: globalMax,
+      };
+    });
+    
+    return stats;
+  }
+
   function populateTable() {
     const { tableBody } = elements;
     if (!tableBody) {
@@ -466,9 +598,10 @@
       return;
     }
 
+    const periodStats = calculatePeriodStats();
     const fragment = document.createDocumentFragment();
     state.data.symbols.forEach((symbol) => {
-      const { mainRow, detailRow } = createRow(symbol);
+      const { mainRow, detailRow } = createRow(symbol, periodStats);
       fragment.appendChild(mainRow);
       fragment.appendChild(detailRow);
     });

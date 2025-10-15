@@ -99,6 +99,7 @@ th.col-group-3m {
   background-color: var(--col-3m-header);
 }
 
+/* Histogram backgrounds are applied inline in JS */
 td.col-group-3m {
   background-color: var(--col-3m-bg);
 }
