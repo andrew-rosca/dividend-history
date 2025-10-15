@@ -57,11 +57,21 @@ def transform_table_data(table_data: List[Dict[str, Any]]) -> List[Dict[str, Any
                 continue
             price_history.append([date, float(price)])
 
+        # Transform dividends to include only essential fields
+        dividends = []
+        for div in item.get("dividends", []):
+            dividends.append({
+                "ex_dividend_date": div.get("ex_dividend_date"),
+                "cash_amount": float(div.get("cash_amount", 0)),
+                "pay_date": div.get("pay_date"),
+            })
+
         transformed.append(
             {
                 "symbol": item["symbol"],
                 "dividendFrequency": item.get("dividend_frequency") or None,
                 "priceHistory": price_history,
+                "dividends": dividends,
                 "metrics": {period: clean_metrics(item.get(period)) for period in PERIODS},
             }
         )

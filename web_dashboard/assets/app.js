@@ -346,7 +346,29 @@
     }
 
     const labels = symbol.priceHistory.map((point) => point[0]);
-    const data = symbol.priceHistory.map((point) => Number(point[1]));
+    const prices = symbol.priceHistory.map((point) => Number(point[1]));
+    
+    // Calculate cumulative total return (price + dividends reinvested)
+    const totalReturnData = [];
+    let cumulativeDividends = 0;
+    let divIndex = 0;
+    const sortedDividends = symbol.dividends && Array.isArray(symbol.dividends) 
+      ? symbol.dividends.slice().sort((a, b) => (a.ex_dividend_date || '').localeCompare(b.ex_dividend_date || ''))
+      : [];
+    
+    symbol.priceHistory.forEach((point) => {
+      const date = point[0];
+      const price = Number(point[1]);
+      
+      // Accumulate all dividends that have gone ex-dividend by this date
+      while (divIndex < sortedDividends.length && sortedDividends[divIndex].ex_dividend_date <= date) {
+        cumulativeDividends += Number(sortedDividends[divIndex].cash_amount || 0);
+        divIndex++;
+      }
+      
+      totalReturnData.push(price + cumulativeDividends);
+    });
+    
     const ctx = canvas.getContext('2d');
 
     state.inlineChart = new Chart(ctx, {
@@ -355,13 +377,23 @@
         labels,
         datasets: [
           {
-            label: `${symbol.symbol} close price`,
-            data,
+            label: 'Total return (price + dividends)',
+            data: totalReturnData,
             borderColor: COLORS.accent,
             backgroundColor: COLORS.accentFill,
             tension: 0.25,
             fill: 'start',
             pointRadius: 0,
+          },
+          {
+            label: 'Close price',
+            data: prices,
+            borderColor: COLORS.gain,
+            backgroundColor: 'rgba(30, 142, 62, 0.1)',
+            tension: 0.25,
+            fill: false,
+            pointRadius: 0,
+            borderDash: [5, 3],
           },
         ],
       },
@@ -390,13 +422,23 @@
         },
         plugins: {
           legend: {
-            display: false,
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: {
+              boxWidth: 12,
+              boxHeight: 12,
+              padding: 10,
+              font: {
+                size: 11,
+              },
+            },
           },
           tooltip: {
             callbacks: {
               label(context) {
-                const price = context.parsed.y;
-                return `${formatCurrency(price)} on ${context.label}`;
+                const value = context.parsed.y;
+                return `${context.dataset.label}: ${formatCurrency(value)}`;
               },
             },
           },

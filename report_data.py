@@ -72,6 +72,7 @@ def collect_report_data(
                 "symbol": symbol,
                 "price_history": price_history,
                 "dividend_frequency": dividend_freq,
+                "dividends": dividends,
                 "3m": metrics_3m,
                 "6m": metrics_6m,
                 "12m": metrics_12m,
