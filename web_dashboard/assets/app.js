@@ -137,12 +137,23 @@
     return wrapSignedValue(metrics.price_change_pct, formatted);
   }
   
-  function underlyingReturnDisplay(underlyingMetrics) {
+  function underlyingReturnDisplay(underlyingMetrics, etfTotalReturn) {
     if (!underlyingMetrics || underlyingMetrics.total_return_pct === null || underlyingMetrics.total_return_pct === undefined) {
       return wrapSignedValue(null, NO_VALUE);
     }
     const formatted = formatPercent(underlyingMetrics.total_return_pct);
-    return wrapSignedValue(underlyingMetrics.total_return_pct, formatted);
+    let result = wrapSignedValue(underlyingMetrics.total_return_pct, formatted);
+    
+    // Add warning icon if underlying outperforms ETF
+    // This handles both positive and negative cases correctly:
+    // - Positive: underlying +10% > ETF +5% means underlying is better
+    // - Negative: underlying -5% > ETF -10% means underlying lost less (better)
+    if (etfTotalReturn !== null && etfTotalReturn !== undefined && 
+        underlyingMetrics.total_return_pct > etfTotalReturn) {
+      result = `${result}⚠️`;
+    }
+    
+    return result;
   }
 
   function buildResultCell(metrics) {
@@ -251,12 +262,15 @@
         const metric = symbol.metrics[period];
         // For underlying column, pass the underlying metrics for this period, or null if no underlying
         let dataToRender;
+        let value;
         if (key === 'underlying') {
           dataToRender = symbol.underlying ? symbol.underlying.metrics[period] : null;
+          // Pass ETF's total return as second argument for comparison
+          value = render(dataToRender, metric?.total_return_pct);
         } else {
           dataToRender = metric;
+          value = render(dataToRender);
         }
-        const value = render(dataToRender);
         const classes = [
           'metric-cell',
           'col-group',
