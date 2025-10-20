@@ -495,25 +495,45 @@
       return;
     }
     
-    // Use the price history as-is since it already covers the date range we need
-    const filteredHistory = symbol.priceHistory.filter(point => point[0] >= startDate);
-    const labels = filteredHistory.map(point => point[0]);
-    const prices = filteredHistory.map(point => Number(point[1]));
+    // Calculate the ideal 12-month start date (1 year before the last data point)
+    const endDate = symbol.priceHistory[symbol.priceHistory.length - 1][0];
+    const endDateObj = new Date(endDate);
+    const idealStartDate = new Date(endDateObj);
+    idealStartDate.setFullYear(idealStartDate.getFullYear() - 1);
+    const idealStartDateStr = idealStartDate.toISOString().split('T')[0];
     
     // Create a map for quick date lookups
     const dateMap = new Map(symbol.priceHistory.map(p => [p[0], p]));
     
+    // Use ALL dates from price history to build the X-axis
+    // This ensures we show every trading day available
+    const allDates = symbol.priceHistory.map(p => p[0]);
+    
+    const labels = allDates;
+    const prices = allDates.map(date => {
+      const point = dateMap.get(date);
+      // Return null for dates before actual data starts
+      return (point && date >= startDate) ? Number(point[1]) : null;
+    });
+    
     // Calculate percentage return for ETF total return (price + dividends)
     const totalReturnPctData = [];
+    const pricePctData = [];
     let cumulativeDividends = 0;
     let divIndex = 0;
     const sortedDividends = symbol.dividends && Array.isArray(symbol.dividends) 
       ? symbol.dividends.slice().sort((a, b) => (a.ex_dividend_date || '').localeCompare(b.ex_dividend_date || ''))
       : [];
     
-    filteredHistory.forEach((point) => {
-      const date = point[0];
-      const price = Number(point[1]);
+    allDates.forEach((date, index) => {
+      const price = prices[index];
+      
+      // If no price data for this date (before actual start), use null
+      if (price === null || date < startDate) {
+        totalReturnPctData.push(null);
+        pricePctData.push(null);
+        return;
+      }
       
       // Accumulate all dividends that have gone ex-dividend by this date (but after start date)
       while (divIndex < sortedDividends.length && sortedDividends[divIndex].ex_dividend_date <= date) {
@@ -524,18 +544,28 @@
       }
       
       const totalReturn = price + cumulativeDividends;
-      const pctReturn = ((totalReturn - startPrice) / startPrice) * 100;
-      totalReturnPctData.push(pctReturn);
+      const totalPctReturn = ((totalReturn - startPrice) / startPrice) * 100;
+      const pricePctReturn = ((price - startPrice) / startPrice) * 100;
+      
+      totalReturnPctData.push(totalPctReturn);
+      pricePctData.push(pricePctReturn);
     });
     
-    // Calculate percentage return for ETF price only
-    const pricePctData = prices.map(price => ((price - startPrice) / startPrice) * 100);
+    // Prepare datasets array - convert to {x, y} format for time scale
+    const totalReturnData = allDates.map((date, i) => ({
+      x: date,
+      y: totalReturnPctData[i]
+    }));
     
-    // Prepare datasets array
+    const priceReturnData = allDates.map((date, i) => ({
+      x: date,
+      y: pricePctData[i]
+    }));
+    
     const datasets = [
       {
         label: `${symbol.symbol} Total Return %`,
-        data: totalReturnPctData,
+        data: totalReturnData,
         borderColor: 'rgba(34, 197, 94, 1)', // Green
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         borderWidth: 2,
@@ -546,7 +576,7 @@
       },
       {
         label: `${symbol.symbol} Price Return %`,
-        data: pricePctData,
+        data: priceReturnData,
         borderColor: 'rgba(59, 130, 246, 1)', // Blue
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         borderWidth: 2,
@@ -564,9 +594,12 @@
     const underlyingDividends = symbol.underlying?.dividends || [];
     
     if (underlyingHistory && underlyingHistory.length > 0 && startDate && startPrice) {
-      const underlyingFiltered = underlyingHistory.filter(p => p[0] >= startDate);
-      if (underlyingFiltered.length > 0) {
-        const underlyingStartPrice = Number(underlyingFiltered[0][1]);
+      // Create map for underlying data
+      const underlyingDateMap = new Map(underlyingHistory.map(p => [p[0], p]));
+      const underlyingStartPoint = underlyingHistory.find(p => p[0] >= startDate);
+      
+      if (underlyingStartPoint) {
+        const underlyingStartPrice = Number(underlyingStartPoint[1]);
         
         // Accumulate underlying dividends
         let underlyingCumulativeDividends = 0;
@@ -575,8 +608,14 @@
           ? underlyingDividends.slice().sort((a, b) => (a.ex_dividend_date || '').localeCompare(b.ex_dividend_date || ''))
           : [];
         
-        const underlyingTotalReturnPctData = underlyingFiltered.map((point) => {
-          const date = point[0];
+        const underlyingTotalReturnPctData = allDates.map((date) => {
+          const point = underlyingDateMap.get(date);
+          
+          // If no underlying data for this date or before actual start, use null
+          if (!point || date < startDate) {
+            return null;
+          }
+          
           const price = Number(point[1]);
           
           // Accumulate dividends for underlying
@@ -592,9 +631,15 @@
           return ((totalReturn - underlyingStartPrice) / underlyingStartPrice) * 100;
         });
         
+        // Convert to {x, y} format for time scale
+        const underlyingData = allDates.map((date, i) => ({
+          x: date,
+          y: underlyingTotalReturnPctData[i]
+        }));
+        
         datasets.push({
           label: `${underlyingSymbol} Total Return %`,
-          data: underlyingTotalReturnPctData,
+          data: underlyingData,
           borderColor: 'rgba(147, 51, 234, 1)', // Purple
           backgroundColor: 'rgba(147, 51, 234, 0.1)',
           borderWidth: 2,
@@ -612,7 +657,6 @@
     state.inlineChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels,
         datasets: datasets,
       },
       options: {
@@ -620,6 +664,15 @@
         maintainAspectRatio: false,
         scales: {
           x: {
+            type: 'time',
+            time: {
+              unit: 'month',
+              displayFormats: {
+                month: 'MMM yy'
+              }
+            },
+            min: idealStartDateStr,
+            max: endDate,
             ticks: {
               maxTicksLimit: 8,
               color: '#475569',
