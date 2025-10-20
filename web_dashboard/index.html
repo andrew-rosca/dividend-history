@@ -17,6 +17,11 @@
       integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
       crossorigin="anonymous"
     ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
+      crossorigin="anonymous"
+    ></script>
     <script defer src="./assets/data.js"></script>
     <script defer src="./assets/app.js"></script>
   </head>
@@ -44,26 +49,29 @@
             <table id="summary-table">
               <thead>
                 <tr>
-                  <th rowspan="2" class="sticky-col">Symbol</th>
-                  <th colspan="3" class="group-heading col-group-3m">3 Month</th>
-                  <th colspan="3" class="group-heading col-group-6m">6 Month</th>
-                  <th colspan="3" class="group-heading col-group-12m">12 Month</th>
+                  <th rowspan="2" class="sticky-col">ETF <br />&nbsp;&nbsp;&nbsp;Underlying</th>
+                 <th colspan="4" class="group-heading col-group-3m">3 Month</th>
+                  <th colspan="4" class="group-heading col-group-6m">6 Month</th>
+                  <th colspan="4" class="group-heading col-group-12m">12 Month</th>
                 </tr>
                 <tr>
                   <th class="metric-heading group-start group-start-first col-group-3m metric-price">Price Δ</th>
                   <th class="metric-heading col-group-3m metric-dividends">Dividends</th>
                   <th class="metric-heading col-group-3m metric-total">Total</th>
+                  <th class="metric-heading col-group-3m metric-underlying">Underlying</th>
                   <th class="metric-heading group-start col-group-6m metric-price">Price Δ</th>
                   <th class="metric-heading col-group-6m metric-dividends">Dividends</th>
                   <th class="metric-heading col-group-6m metric-total">Total</th>
+                  <th class="metric-heading col-group-6m metric-underlying">Underlying</th>
                   <th class="metric-heading group-start col-group-12m metric-price">Price Δ</th>
                   <th class="metric-heading col-group-12m metric-dividends">Dividends</th>
                   <th class="metric-heading col-group-12m metric-total">Total</th>
+                  <th class="metric-heading col-group-12m metric-underlying">Underlying</th>
                 </tr>
               </thead>
               <tbody data-table-body>
                 <tr>
-                  <td colspan="10" class="empty">Loading data…</td>
+                  <td colspan="13" class="empty">Loading data…</td>
                 </tr>
               </tbody>
             </table>

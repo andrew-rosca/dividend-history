@@ -15,7 +15,7 @@
     accent: '#2563eb',
     accentFill: 'rgba(37, 99, 235, 0.15)',
   };
-  const NO_VALUE = '—';
+  const NO_VALUE = '<span class="no-value">—</span>';
 
   const elements = {
     tableBody: document.querySelector('[data-table-body]'),
@@ -136,6 +136,28 @@
     const formatted = formatPercent(metrics.price_change_pct);
     return wrapSignedValue(metrics.price_change_pct, formatted);
   }
+  
+  function underlyingReturnDisplay(underlyingMetrics, etfTotalReturn) {
+    if (!underlyingMetrics || underlyingMetrics.total_return_pct === null || underlyingMetrics.total_return_pct === undefined) {
+      return wrapSignedValue(null, NO_VALUE);
+    }
+    const formatted = formatPercent(underlyingMetrics.total_return_pct);
+    let result = wrapSignedValue(underlyingMetrics.total_return_pct, formatted);
+    
+    // Add warning icon if underlying outperforms ETF
+    // This handles both positive and negative cases correctly:
+    // - Positive: underlying +10% > ETF +5% means underlying is better
+    // - Negative: underlying -5% > ETF -10% means underlying lost less (better)
+    if (etfTotalReturn !== null && etfTotalReturn !== undefined && 
+        underlyingMetrics.total_return_pct > etfTotalReturn) {
+      result = `${result} <span class="warning-icon">⚠️<span class="warning-tooltip">Underlying return is better than the ETF total return</span></span>`;
+    } else { 
+      // Add invisible placeholder to maintain alignment
+      result = `${result} <span class="warning-icon-placeholder">⚠️</span>`;
+    }
+    
+    return result;
+  }
 
   function buildResultCell(metrics) {
     const { text, className } = formatResult(metrics ? metrics.profitable_total : null);
@@ -146,6 +168,7 @@
     { key: 'price', className: 'metric-price', render: priceDeltaDisplay },
     { key: 'dividends', className: 'metric-dividends', render: dividendsDisplay },
     { key: 'total', className: 'metric-total', render: totalReturnDisplay },
+    { key: 'underlying', className: 'metric-underlying', render: underlyingReturnDisplay },
   ];
 
   function calculateHistogramIntensity(value, min, max) {
@@ -221,6 +244,9 @@
     });
 
     const frequencyBadge = buildFrequencyBadge(symbol.dividendFrequency);
+    const underlyingLabel = symbol.underlying 
+      ? `<span class="underlying-label">${symbol.underlying.symbol}</span>` 
+      : '';
     const metricsCells = PERIODS.map((period) => {
       const histData = histogramData[period];
       const intensity = histData.intensity;
@@ -237,7 +263,17 @@
       
       return METRIC_COLUMNS.map(({ key, className, render }, index) => {
         const metric = symbol.metrics[period];
-        const value = render(metric);
+        // For underlying column, pass the underlying metrics for this period, or null if no underlying
+        let dataToRender;
+        let value;
+        if (key === 'underlying') {
+          dataToRender = symbol.underlying ? symbol.underlying.metrics[period] : null;
+          // Pass ETF's total return as second argument for comparison
+          value = render(dataToRender, metric?.total_return_pct);
+        } else {
+          dataToRender = metric;
+          value = render(dataToRender);
+        }
         const classes = [
           'metric-cell',
           'col-group',
@@ -306,6 +342,7 @@
         <span class="symbol-cell">
           <span class="symbol-ticker">${symbol.symbol}</span>
           ${frequencyBadge}
+          ${underlyingLabel}
         </span>
       </td>
       ${metricsCells}
@@ -317,15 +354,15 @@
     detailRow.id = detailId;
 
     const detailCell = document.createElement('td');
-    detailCell.colSpan = 10;
+    detailCell.colSpan = 13;
     detailCell.innerHTML = `
       <div class="inline-detail" data-inline-detail>
         <div class="inline-detail-head">
-          <span class="inline-detail-title">${symbol.symbol} price history</span>
+          <span class="inline-detail-title">${symbol.symbol} percentage returns</span>
           <span class="inline-detail-meta" data-inline-latest>Latest close: ${NO_VALUE}</span>
         </div>
         <div class="inline-chart-wrapper">
-          <canvas class="inline-chart" data-inline-chart height="240" role="img" aria-label="${symbol.symbol} price history"></canvas>
+          <canvas class="inline-chart" data-inline-chart height="240" role="img" aria-label="${symbol.symbol} percentage returns"></canvas>
           <p class="inline-chart-empty" data-inline-empty hidden>No price history available for this symbol.</p>
         </div>
       </div>
@@ -448,63 +485,197 @@
       emptyState.hidden = true;
     }
 
-    const labels = symbol.priceHistory.map((point) => point[0]);
-    const prices = symbol.priceHistory.map((point) => Number(point[1]));
+    // Get 12-month metrics to use the same date range as the table
+    const metrics12m = symbol.metrics['12m'];
+    const startDate = metrics12m?.start_date;
+    const startPrice = metrics12m?.start_price;
     
-    // Calculate cumulative total return (price + dividends reinvested)
-    const totalReturnData = [];
+    if (!startDate || !startPrice) {
+      if (emptyState) {
+        emptyState.hidden = false;
+      }
+      canvas.classList.add('is-hidden');
+      return;
+    }
+    
+    // Calculate the ideal 12-month start date (1 year before the last data point)
+    const endDate = symbol.priceHistory[symbol.priceHistory.length - 1][0];
+    const endDateObj = new Date(endDate);
+    const idealStartDate = new Date(endDateObj);
+    idealStartDate.setFullYear(idealStartDate.getFullYear() - 1);
+    const idealStartDateStr = idealStartDate.toISOString().split('T')[0];
+    
+    // Create a map for quick date lookups
+    const dateMap = new Map(symbol.priceHistory.map(p => [p[0], p]));
+    
+    // Use ALL dates from price history to build the X-axis
+    // This ensures we show every trading day available
+    const allDates = symbol.priceHistory.map(p => p[0]);
+    
+    const labels = allDates;
+    const prices = allDates.map(date => {
+      const point = dateMap.get(date);
+      // Return null for dates before actual data starts
+      return (point && date >= startDate) ? Number(point[1]) : null;
+    });
+    
+    // Calculate percentage return for ETF total return (price + dividends)
+    const totalReturnPctData = [];
+    const pricePctData = [];
     let cumulativeDividends = 0;
     let divIndex = 0;
     const sortedDividends = symbol.dividends && Array.isArray(symbol.dividends) 
       ? symbol.dividends.slice().sort((a, b) => (a.ex_dividend_date || '').localeCompare(b.ex_dividend_date || ''))
       : [];
     
-    symbol.priceHistory.forEach((point) => {
-      const date = point[0];
-      const price = Number(point[1]);
+    allDates.forEach((date, index) => {
+      const price = prices[index];
       
-      // Accumulate all dividends that have gone ex-dividend by this date
+      // If no price data for this date (before actual start), use null
+      if (price === null || date < startDate) {
+        totalReturnPctData.push(null);
+        pricePctData.push(null);
+        return;
+      }
+      
+      // Accumulate all dividends that have gone ex-dividend by this date (but after start date)
       while (divIndex < sortedDividends.length && sortedDividends[divIndex].ex_dividend_date <= date) {
-        cumulativeDividends += Number(sortedDividends[divIndex].cash_amount || 0);
+        if (sortedDividends[divIndex].ex_dividend_date >= startDate) {
+          cumulativeDividends += Number(sortedDividends[divIndex].cash_amount || 0);
+        }
         divIndex++;
       }
       
-      totalReturnData.push(price + cumulativeDividends);
+      const totalReturn = price + cumulativeDividends;
+      const totalPctReturn = ((totalReturn - startPrice) / startPrice) * 100;
+      const pricePctReturn = ((price - startPrice) / startPrice) * 100;
+      
+      totalReturnPctData.push(totalPctReturn);
+      pricePctData.push(pricePctReturn);
     });
+    
+    // Prepare datasets array - convert to {x, y} format for time scale
+    const totalReturnData = allDates.map((date, i) => ({
+      x: date,
+      y: totalReturnPctData[i]
+    }));
+    
+    const priceReturnData = allDates.map((date, i) => ({
+      x: date,
+      y: pricePctData[i]
+    }));
+    
+    const datasets = [
+      {
+        label: `${symbol.symbol} Total Return %`,
+        data: totalReturnData,
+        borderColor: 'rgba(34, 197, 94, 1)', // Green
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderWidth: 2,
+        fill: false,
+        tension: 0.1,
+        pointRadius: 0,
+        pointHoverRadius: 4
+      },
+      {
+        label: `${symbol.symbol} Price Return %`,
+        data: priceReturnData,
+        borderColor: 'rgba(59, 130, 246, 1)', // Blue
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: false,
+        tension: 0.1,
+        pointRadius: 0,
+        pointHoverRadius: 4
+      }
+    ];
+    
+    // Add underlying asset total return if available
+    const underlyingSymbol = symbol.underlying?.symbol;
+    const underlyingHistory = symbol.underlyingPriceHistory || [];
+    const underlyingDividends = symbol.underlying?.dividends || [];
+    
+    if (underlyingHistory && underlyingHistory.length > 0 && startDate && startPrice) {
+      // Create map for underlying data
+      const underlyingDateMap = new Map(underlyingHistory.map(p => [p[0], p]));
+      const underlyingStartPoint = underlyingHistory.find(p => p[0] >= startDate);
+      
+      if (underlyingStartPoint) {
+        const underlyingStartPrice = Number(underlyingStartPoint[1]);
+        
+        // Accumulate underlying dividends
+        let underlyingCumulativeDividends = 0;
+        let underlyingDivIndex = 0;
+        const underlyingSortedDividends = underlyingDividends && Array.isArray(underlyingDividends)
+          ? underlyingDividends.slice().sort((a, b) => (a.ex_dividend_date || '').localeCompare(b.ex_dividend_date || ''))
+          : [];
+        
+        const underlyingTotalReturnPctData = allDates.map((date) => {
+          const point = underlyingDateMap.get(date);
+          
+          // If no underlying data for this date or before actual start, use null
+          if (!point || date < startDate) {
+            return null;
+          }
+          
+          const price = Number(point[1]);
+          
+          // Accumulate dividends for underlying
+          while (underlyingDivIndex < underlyingSortedDividends.length && 
+                 underlyingSortedDividends[underlyingDivIndex].ex_dividend_date <= date) {
+            if (underlyingSortedDividends[underlyingDivIndex].ex_dividend_date >= startDate) {
+              underlyingCumulativeDividends += Number(underlyingSortedDividends[underlyingDivIndex].cash_amount || 0);
+            }
+            underlyingDivIndex++;
+          }
+          
+          const totalReturn = price + underlyingCumulativeDividends;
+          return ((totalReturn - underlyingStartPrice) / underlyingStartPrice) * 100;
+        });
+        
+        // Convert to {x, y} format for time scale
+        const underlyingData = allDates.map((date, i) => ({
+          x: date,
+          y: underlyingTotalReturnPctData[i]
+        }));
+        
+        datasets.push({
+          label: `${underlyingSymbol} Total Return %`,
+          data: underlyingData,
+          borderColor: 'rgba(147, 51, 234, 1)', // Purple
+          backgroundColor: 'rgba(147, 51, 234, 0.1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0.1,
+          pointRadius: 0,
+          pointHoverRadius: 4
+        });
+      }
+    }
     
     const ctx = canvas.getContext('2d');
 
     state.inlineChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels,
-        datasets: [
-          {
-            label: 'Total return (price + dividends)',
-            data: totalReturnData,
-            borderColor: COLORS.accent,
-            backgroundColor: COLORS.accentFill,
-            tension: 0.25,
-            fill: 'start',
-            pointRadius: 0,
-          },
-          {
-            label: 'Close price',
-            data: prices,
-            borderColor: COLORS.gain,
-            backgroundColor: 'rgba(30, 142, 62, 0.1)',
-            tension: 0.25,
-            fill: false,
-            pointRadius: 0,
-            borderDash: [5, 3],
-          },
-        ],
+        datasets: datasets,
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           x: {
+            type: 'time',
+            time: {
+              unit: 'month',
+              displayFormats: {
+                month: 'MMM yy'
+              }
+            },
+            min: idealStartDateStr,
+            max: endDate,
             ticks: {
               maxTicksLimit: 8,
               color: '#475569',
@@ -516,7 +687,7 @@
           y: {
             ticks: {
               color: '#475569',
-              callback: (value) => `$${value}`,
+              callback: (value) => `${value.toFixed(1)}%`,
             },
             grid: {
               color: 'rgba(148, 163, 184, 0.25)',
@@ -541,7 +712,7 @@
             callbacks: {
               label(context) {
                 const value = context.parsed.y;
-                return `${context.dataset.label}: ${formatCurrency(value)}`;
+                return `${context.dataset.label}: ${value.toFixed(2)}%`;
               },
             },
           },
@@ -591,7 +762,7 @@
 
     if (!state.data || !state.data.symbols.length) {
       const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="10" class="empty">No data available.</td>';
+      row.innerHTML = '<td colspan="13" class="empty">No data available.</td>';
       tableBody.appendChild(row);
       return;
     }
@@ -658,7 +829,7 @@
       elements.symbolCount.textContent = '0';
       elements.skippedCount.textContent = '0';
       if (elements.tableBody) {
-        elements.tableBody.innerHTML = '<tr><td colspan="10" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
+        elements.tableBody.innerHTML = '<tr><td colspan="13" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
       }
       state.selectedSymbol = null;
     }

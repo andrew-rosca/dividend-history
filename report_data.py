@@ -45,8 +45,21 @@ def collect_report_data(
     skipped_symbols: List[str] = []
 
     run_timestamp = datetime.now()
+    
+    # Parse symbols configuration to extract ETF -> underlying mappings
+    etf_underlying_map = {}
+    etf_symbols = []
+    
+    for entry in config["symbols"]:
+        if isinstance(entry, str):
+            etf_symbols.append(entry)
+        elif isinstance(entry, dict):
+            etf_symbol = entry["symbol"]
+            etf_symbols.append(etf_symbol)
+            if "underlying" in entry:
+                etf_underlying_map[etf_symbol] = entry["underlying"]
 
-    for symbol in config["symbols"]:
+    for symbol in etf_symbols:
         if not silent:
             print(f"Processing {symbol}...")
 
@@ -66,6 +79,33 @@ def collect_report_data(
         metrics_12m = analyzer.calculate_metrics(months=12)
         price_history = analyzer.get_price_history(months=12)
         dividend_freq = analyzer.get_dividend_frequency()
+        
+        # Process underlying if configured
+        underlying_symbol = etf_underlying_map.get(symbol)
+        underlying_data = None
+        underlying_price_history = None
+        underlying_dividends = []
+        
+        if underlying_symbol:
+            if not silent:
+                print(f"  Processing underlying {underlying_symbol}...")
+            
+            underlying_dividends = data_manager.load_dividends(underlying_symbol)
+            underlying_prices = data_manager.load_prices(underlying_symbol)
+            
+            if underlying_prices:
+                underlying_analyzer = DividendAnalyzer(underlying_dividends, underlying_prices)
+                underlying_data = {
+                    "symbol": underlying_symbol,
+                    "3m": underlying_analyzer.calculate_metrics(months=3),
+                    "6m": underlying_analyzer.calculate_metrics(months=6),
+                    "12m": underlying_analyzer.calculate_metrics(months=12),
+                    "dividends": underlying_dividends,
+                }
+                underlying_price_history = underlying_analyzer.get_price_history(months=12)
+            else:
+                if not silent:
+                    print(f"  Warning: No price data for underlying {underlying_symbol}")
 
         table_data.append(
             {
@@ -76,6 +116,8 @@ def collect_report_data(
                 "3m": metrics_3m,
                 "6m": metrics_6m,
                 "12m": metrics_12m,
+                "underlying": underlying_data,
+                "underlying_price_history": underlying_price_history,
             }
         )
 
@@ -89,7 +131,7 @@ def collect_report_data(
         "config_path": str(Path(config_path).resolve()),
         "data_directory": str(Path(config["data_directory"]).resolve()),
         "symbol_count": len(processed_symbols),
-        "requested_symbol_count": len(config["symbols"]),
+        "requested_symbol_count": len(etf_symbols),
         "skipped_symbols": skipped_symbols,
         "symbols": processed_symbols,
     }

@@ -65,16 +65,52 @@ def transform_table_data(table_data: List[Dict[str, Any]]) -> List[Dict[str, Any
                 "cash_amount": float(div.get("cash_amount", 0)),
                 "pay_date": div.get("pay_date"),
             })
-
-        transformed.append(
-            {
-                "symbol": item["symbol"],
-                "dividendFrequency": item.get("dividend_frequency") or None,
-                "priceHistory": price_history,
-                "dividends": dividends,
-                "metrics": {period: clean_metrics(item.get(period)) for period in PERIODS},
+        
+        # Process underlying data if available
+        underlying = None
+        underlying_price_history = []
+        
+        if item.get("underlying"):
+            underlying_data = item["underlying"]
+            
+            # Transform underlying dividends
+            underlying_dividends = []
+            for div in underlying_data.get("dividends", []):
+                underlying_dividends.append({
+                    "ex_dividend_date": div.get("ex_dividend_date"),
+                    "cash_amount": float(div.get("cash_amount", 0)),
+                    "pay_date": div.get("pay_date"),
+                })
+            
+            underlying = {
+                "symbol": underlying_data["symbol"],
+                "metrics": {period: clean_metrics(underlying_data.get(period)) for period in PERIODS},
+                "dividends": underlying_dividends,
             }
-        )
+            
+            # Transform underlying price history
+            if item.get("underlying_price_history"):
+                for point in item["underlying_price_history"]:
+                    if not point or len(point) < 2:
+                        continue
+                    date, price = point
+                    if price is None:
+                        continue
+                    underlying_price_history.append([date, float(price)])
+
+        result = {
+            "symbol": item["symbol"],
+            "dividendFrequency": item.get("dividend_frequency") or None,
+            "priceHistory": price_history,
+            "dividends": dividends,
+            "metrics": {period: clean_metrics(item.get(period)) for period in PERIODS},
+        }
+        
+        if underlying:
+            result["underlying"] = underlying
+            result["underlyingPriceHistory"] = underlying_price_history
+        
+        transformed.append(result)
 
     return transformed
 
