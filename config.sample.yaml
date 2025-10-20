@@ -6,7 +6,34 @@ symbols:
   - SPYI
   - XDTE
   - QQQI
+  - QQQY
+  - QDTE
+  - IWMY
+  - RDTE
+  - YMAX
+  - ULTY
+  - BTCI
+  - XBTY
+  - YBIT
+  - AMZY
+  - BRKW
+  - HOOW
+  - HOOY
+  - MSTY
+  - MST
+  - NVDY
+  - PLTY
   - O
+  - TSLY
+  - TSYY
+  - SMCY
+  - DIVO
+  - IDVO
+  - BITK
+  - GDXY
+  - IAUI
+  - WPAY
+  - TSLW
 
 # Rate limiting (Polygon free tier: 5 requests/minute)
 rate_limit_requests_per_minute: 5
