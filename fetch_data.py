@@ -115,11 +115,37 @@ def main():
     start_date, end_date = get_fetch_date_range(lookback_months=24)
     print(f"\nFetching data from {start_date} to {end_date}")
 
-    # Process each symbol
-    symbols = config['symbols']
-    print(f"\nProcessing {len(symbols)} symbols: {', '.join(symbols)}")
+    # Process symbols - normalize config format to support both string and dict entries
+    symbols_config = config['symbols']
+    
+    # Collect all unique symbols to fetch (ETFs and their underlyings)
+    symbols_to_fetch = set()
+    etf_underlying_map = {}
+    
+    for entry in symbols_config:
+        if isinstance(entry, str):
+            # Simple string symbol
+            symbols_to_fetch.add(entry)
+        elif isinstance(entry, dict):
+            # Dictionary with 'symbol' and optional 'underlying'
+            etf_symbol = entry['symbol']
+            symbols_to_fetch.add(etf_symbol)
+            if 'underlying' in entry:
+                underlying_symbol = entry['underlying']
+                symbols_to_fetch.add(underlying_symbol)
+                etf_underlying_map[etf_symbol] = underlying_symbol
+        else:
+            print(f"Warning: Unknown symbol format: {entry}")
+    
+    symbols_list = sorted(symbols_to_fetch)
+    print(f"\nProcessing {len(symbols_list)} symbols (including underlyings): {', '.join(symbols_list)}")
+    
+    if etf_underlying_map:
+        print(f"\nETF -> Underlying mappings:")
+        for etf, underlying in sorted(etf_underlying_map.items()):
+            print(f"  {etf} -> {underlying}")
 
-    for ticker in symbols:
+    for ticker in symbols_list:
         try:
             fetch_data_for_symbol(client, data_manager, ticker, start_date, end_date)
         except Exception as e:

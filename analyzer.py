@@ -83,9 +83,10 @@ class DividendAnalyzer:
     def calculate_metrics(self, months: int = 6) -> Dict:
         """
         Calculate performance metrics for a given period.
+        Uses whatever data is available if the full period isn't available.
 
         Args:
-            months: Number of months to look back
+            months: Number of months to look back (target period)
 
         Returns:
             Dictionary with metrics
@@ -107,9 +108,13 @@ class DividendAnalyzer:
                 'profitable_total': None
             }
 
-        # Get date range
+        # Get date range - use earliest available date if data doesn't go back far enough
         end_date = self.prices_df['date'].max()
-        start_date = end_date - timedelta(days=months * 30)
+        target_start_date = end_date - timedelta(days=months * 30)
+        actual_start_date = self.prices_df['date'].min()
+        
+        # Use the later of the two dates (i.e., whatever data we actually have)
+        start_date = max(target_start_date, actual_start_date)
 
         # Get prices
         start_price = self.get_price_at_date(start_date)

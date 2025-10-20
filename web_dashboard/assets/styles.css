@@ -5,7 +5,7 @@
   --border: #d8dbea;
   --border-strong: #bbc1d7;
   --text: #1b1d2a;
-  --text-muted: #5a6076;
+  --text-muted: #9e9e9e;
   --accent: #2563eb;
   --accent-muted: #dbeafe;
   --gain: #1e8e3e;
@@ -250,6 +250,46 @@ td.sticky-col {
 .symbol-ticker {
   letter-spacing: 0.01em;
   text-transform: uppercase;
+}
+
+.underlying-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.no-value {
+  color: var(--text-muted); 
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+td.metric-price,
+td.metric-dividends {
+  font-weight: 400;
+}
+
+/* Make dividends text gray - apply to content only, not cell background */
+td.metric-dividends {
+  color: var(--text-muted);
+}
+
+td.metric-dividends > * {
+  opacity: 1;
+}
+
+/* Dim the text content within price delta cells */
+td.metric-price > * {
+  opacity: 0.65;
+}
+
+/* Override positive/negative styling within price delta cells */
+td.metric-price .positive,
+td.metric-price .negative {
+  font-weight: 400;
 }
 
 

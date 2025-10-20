@@ -2,38 +2,62 @@
 polygon_api_key: YOUR_POLYGON_API_KEY_HERE
 
 # List of symbols to track
+# Each symbol can be either a simple string or an object with 'symbol' and optional 'underlying'
+# The 'underlying' field specifies the asset that the ETF tracks (for covered call ETFs, etc.)
 symbols:
-  - SPYI
-  - XDTE
-  - QQQI
-  - QQQY
-  - QDTE
-  - IWMY
-  - RDTE
+  - symbol: SPYI
+    underlying: SPY
+  - symbol: XDTE
+    underlying: SPY
+  - symbol: QQQI
+    underlying: QQQ
+  - symbol: QQQY
+    underlying: QQQ
+  - symbol: QDTE
+    underlying: QQQ
+  - symbol: IWMY
+    underlying: IWM
+  - symbol: RDTE
+    underlying: IWM
   - YMAX
   - ULTY
-  - BTCI
-  - XBTY
-  - YBIT
-  - AMZY
-  - BRKW
-  - HOOW
-  - HOOY
-  - MSTY
-  - MST
-  - NVDY
-  - PLTY
+  - symbol: BTCI
+    underlying: IBIT
+  - symbol: XBTY
+    underlying: IBIT
+  - symbol: YBIT
+    underlying: IBIT
+  - symbol: AMZY
+    underlying: AMZN
+  - symbol: BRKW
+    underlying: BRK.B
+  - symbol: HOOW
+    underlying: XLF
+  - symbol: HOOY
+    underlying: XLF
+  - symbol: MSTY
+    underlying: MSTR
+  - symbol: MST
+    underlying: MSTR
+  - symbol: NVDY
+    underlying: NVDA
+  - symbol: PLTY
+    underlying: PLTR
   - O
-  - TSLY
-  - TSYY
-  - SMCY
+  - symbol: TSLY
+    underlying: TSLA
+  - symbol: TSYY
+    underlying: TSLA
+  - symbol: SMCY
+    underlying: SMCI
   - DIVO
   - IDVO
   - BITK
   - GDXY
   - IAUI
   - WPAY
-  - TSLW
+  - symbol: TSLW
+    underlying: TSLA
 
 # Rate limiting (Polygon free tier: 5 requests/minute)
 rate_limit_requests_per_minute: 5
