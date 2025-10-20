@@ -150,7 +150,10 @@
     // - Negative: underlying -5% > ETF -10% means underlying lost less (better)
     if (etfTotalReturn !== null && etfTotalReturn !== undefined && 
         underlyingMetrics.total_return_pct > etfTotalReturn) {
-      result = `${result}⚠️`;
+      result = `${result} <span class="warning-icon">⚠️<span class="warning-tooltip">Underlying return is better than the ETF total return</span></span>`;
+    } else { 
+      // Add invisible placeholder to maintain alignment
+      result = `${result} <span class="warning-icon-placeholder">⚠️</span>`;
     }
     
     return result;
