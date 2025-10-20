@@ -146,7 +146,6 @@
     { key: 'price', className: 'metric-price', render: priceDeltaDisplay },
     { key: 'dividends', className: 'metric-dividends', render: dividendsDisplay },
     { key: 'total', className: 'metric-total', render: totalReturnDisplay },
-    { key: 'result', className: 'metric-result', render: buildResultCell },
   ];
 
   function calculateHistogramIntensity(value, min, max) {
@@ -226,13 +225,12 @@
       const histData = histogramData[period];
       const intensity = histData.intensity;
       const isNegative = histData.isNegative;
-      const bgColor = getHistogramColor(period);
-      const baseColor = period === '3m' ? 'rgba(37, 99, 235, 0.1)' : 
-                        period === '6m' ? 'rgba(30, 142, 62, 0.1)' : 
-                        'rgba(124, 58, 237, 0.12)';
       
-      // Use red color for negative returns
-      const barColor = isNegative ? 'rgba(239, 68, 68, 0.35)' : bgColor;
+      // Base colors: light green for gains, light red for losses
+      const baseColor = isNegative ? 'rgba(239, 68, 68, 0.1)' : 'rgba(30, 142, 62, 0.1)';
+      
+      // Histogram bar colors: darker green for gains, darker red for losses
+      const barColor = isNegative ? 'rgba(239, 68, 68, 0.35)' : 'rgba(30, 142, 62, 0.35)';
       
       // Calculate gradient stops for each cell position (4 cells total)
       const numCells = METRIC_COLUMNS.length;
@@ -319,7 +317,7 @@
     detailRow.id = detailId;
 
     const detailCell = document.createElement('td');
-    detailCell.colSpan = 13;
+    detailCell.colSpan = 10;
     detailCell.innerHTML = `
       <div class="inline-detail" data-inline-detail>
         <div class="inline-detail-head">
@@ -593,7 +591,7 @@
 
     if (!state.data || !state.data.symbols.length) {
       const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="13" class="empty">No data available.</td>';
+      row.innerHTML = '<td colspan="10" class="empty">No data available.</td>';
       tableBody.appendChild(row);
       return;
     }
@@ -660,7 +658,7 @@
       elements.symbolCount.textContent = '0';
       elements.skippedCount.textContent = '0';
       if (elements.tableBody) {
-        elements.tableBody.innerHTML = '<tr><td colspan="13" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
+        elements.tableBody.innerHTML = '<tr><td colspan="10" class="empty">Failed to load data. Run the build script and open the generated dashboard.</td></tr>';
       }
       state.selectedSymbol = null;
     }

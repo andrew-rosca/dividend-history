@@ -11,11 +11,8 @@
   --gain: #1e8e3e;
   --loss: #d64545;
   --neutral: #9ca3af;
-  --col-3m-bg: rgba(37, 99, 235, 0.1);
-  --col-3m-header: rgba(37, 99, 235, 0.16);
-  --col-6m-bg: rgba(30, 142, 62, 0.1);
-  --col-6m-header: rgba(30, 142, 62, 0.16);
-  --col-12m-bg: rgba(124, 58, 237, 0.12);
+  --col-3m-header: rgba(14, 165, 233, 0.16);
+  --col-6m-header: rgba(37, 99, 235, 0.16);
   --col-12m-header: rgba(124, 58, 237, 0.18);
   --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --radius: 16px;
@@ -110,25 +107,14 @@ th.col-group-3m {
   background-color: var(--col-3m-header);
 }
 
-/* Histogram backgrounds are applied inline in JS */
-td.col-group-3m {
-  background-color: var(--col-3m-bg);
-}
+/* Cell backgrounds are applied inline in JS based on gain/loss */
 
 th.col-group-6m {
   background-color: var(--col-6m-header);
 }
 
-td.col-group-6m {
-  background-color: var(--col-6m-bg);
-}
-
 th.col-group-12m {
   background-color: var(--col-12m-header);
-}
-
-td.col-group-12m {
-  background-color: var(--col-12m-bg);
 }
 
 tbody tr {
@@ -143,29 +129,7 @@ tbody tr.is-selected td.sticky-col {
   background-color: rgba(37, 99, 235, 0.14);
 }
 
-tbody tr:hover td.col-group-3m {
-  background-color: rgba(37, 99, 235, 0.16);
-}
-
-tbody tr:hover td.col-group-6m {
-  background-color: rgba(30, 142, 62, 0.18);
-}
-
-tbody tr:hover td.col-group-12m {
-  background-color: rgba(124, 58, 237, 0.22);
-}
-
-tbody tr.is-selected td.col-group-3m {
-  background-color: rgba(37, 99, 235, 0.22);
-}
-
-tbody tr.is-selected td.col-group-6m {
-  background-color: rgba(30, 142, 62, 0.25);
-}
-
-tbody tr.is-selected td.col-group-12m {
-  background-color: rgba(124, 58, 237, 0.28);
-}
+/* Hover states for gain/loss cells are handled by inline styles in JS */
 
 tbody tr.is-selected {
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28);
@@ -396,29 +360,7 @@ tbody tr.summary-row.is-selected td.sticky-col {
   background-color: rgba(37, 99, 235, 0.14);
 }
 
-tbody tr.summary-row:hover td.col-group-3m {
-  background-color: rgba(37, 99, 235, 0.16);
-}
-
-tbody tr.summary-row:hover td.col-group-6m {
-  background-color: rgba(30, 142, 62, 0.18);
-}
-
-tbody tr.summary-row:hover td.col-group-12m {
-  background-color: rgba(124, 58, 237, 0.22);
-}
-
-tbody tr.summary-row.is-selected td.col-group-3m {
-  background-color: rgba(37, 99, 235, 0.22);
-}
-
-tbody tr.summary-row.is-selected td.col-group-6m {
-  background-color: rgba(30, 142, 62, 0.25);
-}
-
-tbody tr.summary-row.is-selected td.col-group-12m {
-  background-color: rgba(124, 58, 237, 0.28);
-}
+/* Hover states for gain/loss cells are handled by inline styles in JS */
 
 tbody tr.summary-row.is-selected {
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28);
